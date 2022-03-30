@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 init_a = 200  # insert initial concentration of reactant a
 init_b = 0  # insert initial concentration of reactant b
 init_cat = 0  # insert initial concentration of catalyst
-k = 0.00066  # insert rate constant in (M)^x s^-1
+k = 0.00066  # insert rate constant in (M)^x_data s^-1
 
 a_order = 1  # insert order of reaction wrt a
 b_order = 0  # insert order of reaction wrt b

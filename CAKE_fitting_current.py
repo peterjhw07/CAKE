@@ -36,6 +36,7 @@ import pandas as pd
 from scipy import optimize
 # import addcopyfighandler
 
+# general kinetic simulator
 def eq_sim_gen(t_fit, k, x, y, t0):
     r_calc = np.zeros(len(t_fit))
     p_calc = np.zeros(len(t_fit))
@@ -204,83 +205,83 @@ elif len(t0_est) > 1:
 init_param = [k_val, r_val, cat_val, t0_val]
 
 if fit_asp == 'r':
-    x = t
-    y = r
+    x_data = t
+    y_data = r
     if inc == "" or inc == 1:
-        res = optimize.curve_fit(eq_sim_r, x, y, init_param,
+        res = optimize.curve_fit(eq_sim_r, x_data, y_data, init_param,
                                  bounds=((k_min, r_min, cat_min, t0_min), (k_max, r_max, cat_max, t0_max)))  # maxfev=5000
     else:
-        res = optimize.curve_fit(eq_sim_r_inc, x, y, init_param,
+        res = optimize.curve_fit(eq_sim_r_inc, x_data, y_data, init_param,
                                  bounds=((k_min, r_min, cat_min, t0_min), (k_max, r_max, cat_max, t0_max)))  # maxfev=5000
     kf, xf, yf, t0f = res[0]
     if p_col == "":
-        fit = eq_sim_r(x, kf, xf, yf, t0f)
+        fit = eq_sim_r(x_data, kf, xf, yf, t0f)
         fit_r = fit
     else:
-        x = np.append(t, t)
-        y = np.append(r, p)
+        x_data = np.append(t, t)
+        y_data = np.append(r, p)
         if inc == "" or inc == 1:
-            fit = eq_sim_multi(x, kf, xf, yf, t0f)
+            fit = eq_sim_multi(x_data, kf, xf, yf, t0f)
         else:
-            fit = eq_sim_multi_inc(x, kf, xf, yf, t0f)
-        fit_r = fit[:int(len(x) / 2)]
-        fit_p = fit[int(len(x) / 2):]
+            fit = eq_sim_multi_inc(x_data, kf, xf, yf, t0f)
+        fit_r = fit[:int(len(x_data) / 2)]
+        fit_p = fit[int(len(x_data) / 2):]
 elif fit_asp == 'p':
-    x = t
-    y = p
+    x_data = t
+    y_data = p
     if inc == "" or inc == 1:
-        res = optimize.curve_fit(eq_sim_p, x, y, init_param,
+        res = optimize.curve_fit(eq_sim_p, x_data, y_data, init_param,
                                  bounds=((k_min, r_min, cat_min, t0_min), (k_max, r_max, cat_max, t0_max)))  # maxfev=5000
     else:
-        res = optimize.curve_fit(eq_sim_p_inc, x, y, init_param,
+        res = optimize.curve_fit(eq_sim_p_inc, x_data, y_data, init_param,
                                  bounds=((k_min, r_min, cat_min, t0_min), (k_max, r_max, cat_max, t0_max)))  # maxfev=5000
     kf, xf, yf, t0f = res[0]
     if r_col == "":
         if inc == "" or inc == 1:
-            fit = eq_sim_p(x, kf, xf, yf, t0f)
+            fit = eq_sim_p(x_data, kf, xf, yf, t0f)
         else:
-            fit = eq_sim_p_inc(x, kf, xf, yf, t0f)
+            fit = eq_sim_p_inc(x_data, kf, xf, yf, t0f)
         fit_p = fit
     else:
-        x = np.append(t, t)
-        y = np.append(r, p)
+        x_data = np.append(t, t)
+        y_data = np.append(r, p)
         if inc == "" or inc == 1:
-            fit = eq_sim_multi(x, kf, xf, yf, t0f)
+            fit = eq_sim_multi(x_data, kf, xf, yf, t0f)
         else:
-            fit = eq_sim_multi_inc(x, kf, xf, yf, t0f)
-        fit_r = fit[:int(len(x) / 2)]
-        fit_p = fit[int(len(x) / 2):]
+            fit = eq_sim_multi_inc(x_data, kf, xf, yf, t0f)
+        fit_r = fit[:int(len(x_data) / 2)]
+        fit_p = fit[int(len(x_data) / 2):]
 elif 'r' in fit_asp and 'p' in fit_asp:
-    x = np.append(t, t)
-    y = np.append(r, p)
+    x_data = np.append(t, t)
+    y_data = np.append(r, p)
     if inc == "" or inc == 1:
-        res = optimize.curve_fit(eq_sim_multi, x, y, init_param,
+        res = optimize.curve_fit(eq_sim_multi, x_data, y_data, init_param,
                                  bounds=((k_min, r_min, cat_min, t0_min), (k_max, r_max, cat_max, t0_max)))  # maxfev=5000
         kf, xf, yf, t0f = res[0]
-        fit = eq_sim_multi(x, kf, xf, yf, t0f)
+        fit = eq_sim_multi(x_data, kf, xf, yf, t0f)
     else:
-        res = optimize.curve_fit(eq_sim_multi_inc, x, y, init_param,
+        res = optimize.curve_fit(eq_sim_multi_inc, x_data, y_data, init_param,
                                  bounds=((k_min, r_min, cat_min, t0_min), (k_max, r_max, cat_max, t0_max)))  # maxfev=5000
         kf, xf, yf, t0f = res[0]
-        fit = eq_sim_multi_inc(x, kf, xf, yf, t0f)
-    fit_r = fit[:int(len(x) / 2)]
-    fit_p = fit[int(len(x) / 2):]
+        fit = eq_sim_multi_inc(x_data, kf, xf, yf, t0f)
+    fit_r = fit[:int(len(x_data) / 2)]
+    fit_p = fit[int(len(x_data) / 2):]
 
 res_val = res[0]
 res_err = np.sqrt(np.diag(res[1]))
-residuals = y - fit
+residuals = y_data - fit
 ss_res = np.sum(residuals ** 2)
-ss_tot = np.sum((y - np.mean(y)) ** 2)
+ss_tot = np.sum((y_data - np.mean(y_data)) ** 2)
 r_squared = 1 - (ss_res / ss_tot)
 
 #if inc == "" or inc == 1:
-#    fit_rate = eq_sim_rate(x, kf, xf, yf, t0f)
+#    fit_rate = eq_sim_rate(x_data, kf, xf, yf, t0f)
 #else:
-#    fit_rate = eq_sim_rate_inc(x, kf, xf, yf, t0f)
+#    fit_rate = eq_sim_rate_inc(x_data, kf, xf, yf, t0f)
 
-print("Optimal values: rate constant k, reactant order x, catalyst order y and time zero t0")
+print("Optimal values: rate constant k, reactant order x_data, catalyst order y_data and time zero t0")
 print(res_val)
-print("Optimal value errors: rate constant k, reactant order x, catalyst order y and time zero t0")
+print("Optimal value errors: rate constant k, reactant order x_data, catalyst order y_data and time zero t0")
 print(res_err)
 print("Residual sum of squares")
 print(ss_res)

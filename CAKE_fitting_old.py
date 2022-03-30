@@ -230,9 +230,9 @@ r_squared = 1 - (ss_res / ss_tot)
 
 fit_rate = eq_sim_rate(x, kf, xf, yf, t0f)
 
-print("Optimal values: rate constant k, reactant order x, catalyst order y and time zero t0")
+print("Optimal values: rate constant k, reactant order x_data, catalyst order y_data and time zero t0")
 print(res_val)
-print("Optimal value errors: rate constant k, reactant order x, catalyst order y and time zero t0")
+print("Optimal value errors: rate constant k, reactant order x_data, catalyst order y_data and time zero t0")
 print(res_err)
 print("Residual sum of squares")
 print(ss_res)
