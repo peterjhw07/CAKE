@@ -1,7 +1,7 @@
 # CAKE Fitting Programme
 # Known parameters and smoothing
-stoich_r = 1  # insert stoichiometry of r
-stoich_p = 1  # insert stoichiometry of p
+stoich_r = 1  # insert stoichiometry of reactant, r
+stoich_p = 1  # insert stoichiometry of product, p
 r0 = 3.2  # enter value of r0 in M dm^-3 or "" if data are given in M dm^-3
 p0 = 0  # enter value of p0 in M dm^-3 or "" if data are given in M dm^-3
 p_end = r0  # enter end value of product in M dm^-3, r0 if equal to start r0 value, or "" if data are given in M dm^-3
@@ -50,6 +50,7 @@ def eq_sim_gen(t_fit, k, x, y, t0):
         rate_it[it] = k * (r_calc[it] ** x) * ((max(0, t_fit[it] - t0) * cat_add_rate) ** y)
     return [r_calc, p_calc, rate_it]
 
+# simulate kinetics and extract appropriate outputs (x4)
 def eq_sim_r(t, k, x, y, t0):
     t_fit = t
     [r_calc, p_calc, rate_it] = eq_sim_gen(t_fit, k, x, y, t0)
@@ -71,6 +72,7 @@ def eq_sim_multi(t, k, x, y, t0):
     total_calc = np.append(r_calc, p_calc)
     return total_calc
 
+# define additional t values for data sets with few data points
 def add_sim_t(t):
     t_fit = np.zeros(((len(t) - 1) * (inc - 1)) + 1)
     for it in range(0, len(t) - 1):
@@ -79,6 +81,7 @@ def add_sim_t(t):
     t_fit[-1] = t[-1]
     return t_fit
 
+# find the location of original t values
 def find_exp_t(t, t_fit, out):
     out_calc_inc = np.zeros(len(t))
     for it in range(0, len(t)):
@@ -86,6 +89,7 @@ def find_exp_t(t, t_fit, out):
         out_calc_inc[it] = out[index]
     return out_calc_inc
 
+# equivalent to previous simulation functions but with more increments (x4)
 def eq_sim_r_inc(t, k, x, y, t0):
     t_fit = add_sim_t(t)
     [r_calc, p_calc, rate_it] = eq_sim_gen(t_fit, k, x, y, t0)
@@ -112,6 +116,7 @@ def eq_sim_multi_inc(t, k, x, y, t0):
     total_calc_inc = np.append(r_calc_inc, p_calc_inc)
     return total_calc_inc
 
+# smooth data (if required)
 def data_manip(d_col):
     d_raw = df.iloc[:, d_col].values
     if win > 1:
@@ -121,6 +126,7 @@ def data_manip(d_col):
         d_manip = d_raw
     return d_manip
 
+# manipulate to TIC values (for MS only)
 def TIC_manip(data):
     if TIC_col != "":
         data = data / TIC
@@ -151,6 +157,7 @@ if p_col != "":
         p_scale = np.mean(p[-scale_avg_num:-1]) / p_end
         p = p / p_scale
 
+# define inital values and lower and upper limits for parameters to fit: k, x, y (orders wrt. r and p) and t0
 if k_est == "" or k_est == 0:
     print("ERROR: an estimate of k must be entered")
     exit()
@@ -166,7 +173,6 @@ elif len(k_est) == 3:
     k_val = k_est[0]
     k_min = k_est[1]
     k_max = k_est[2]
-
 if r_ord == "":
     r_val = 1
     r_min = 0
@@ -179,7 +185,6 @@ elif len(r_ord) > 1:
     r_val = r_ord[0]
     r_min = r_ord[1]
     r_max = r_ord[2]
-
 if cat_ord == "":
     cat_val = 1
     cat_min = 0
@@ -192,7 +197,6 @@ elif len(cat_ord) > 1:
     cat_val = cat_ord[0]
     cat_min = cat_ord[1]
     cat_max = cat_ord[2]
-
 if len(t0_est) == 1:
     t0_val = t0_est[0]
     t0_min = t0_val - 0.001
@@ -204,6 +208,7 @@ elif len(t0_est) > 1:
 
 init_param = [k_val, r_val, cat_val, t0_val]
 
+# apply fittings, determine optimal parameters and determine resulting fits
 if fit_asp == 'r':
     x_data = t
     y_data = r
@@ -266,7 +271,12 @@ elif 'r' in fit_asp and 'p' in fit_asp:
         fit = eq_sim_multi_inc(x_data, kf, xf, yf, t0f)
     fit_r = fit[:int(len(x_data) / 2)]
     fit_p = fit[int(len(x_data) / 2):]
+if inc == "" or inc == 1:
+    fit_rate = eq_sim_rate(x_data, kf, xf, yf, t0f)
+else:
+    fit_rate = eq_sim_rate_inc(x_data, kf, xf, yf, t0f)
 
+# calculate residuals and errors
 res_val = res[0]
 res_err = np.sqrt(np.diag(res[1]))
 residuals = y_data - fit
@@ -274,11 +284,7 @@ ss_res = np.sum(residuals ** 2)
 ss_tot = np.sum((y_data - np.mean(y_data)) ** 2)
 r_squared = 1 - (ss_res / ss_tot)
 
-#if inc == "" or inc == 1:
-#    fit_rate = eq_sim_rate(x_data, kf, xf, yf, t0f)
-#else:
-#    fit_rate = eq_sim_rate_inc(x_data, kf, xf, yf, t0f)
-
+# print optimal parameters, their associated errors and confidence values
 print("Optimal values: rate constant k, reactant order x_data, catalyst order y_data and time zero t0")
 print(res_val)
 print("Optimal value errors: rate constant k, reactant order x_data, catalyst order y_data and time zero t0")
@@ -288,14 +294,15 @@ print(ss_res)
 print("R^2")
 print(r_squared)
 
+# calculate catalyst poisoning, if any
 if len(t0_est) > 1:
     cat_pois = max(0, (t0f - t0_val) * cat_add_rate)
     print("Catalyst poisoning")
     print(cat_pois)
 
+# graph results
 ax_scale = 1
 edge_adj = 0.02
-# pic_save = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Figures\1.png'
 if r_col != "" and p_col != "":
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 if r_col != "":
@@ -328,7 +335,6 @@ if r_col != "":
         # ax1.savefig(pic_save)
         # ax1.show()
         # plt.rcParams['svg']
-
 if p_col != "":
     if r_col == "":
         plt.figure(figsize=(6, 6))
@@ -358,5 +364,4 @@ if p_col != "":
         ax2.set_ylabel("[P] / $\mathregular{10^{-6}}$ M")
         #ax2.savefig(pic_save)
         #ax2.show()
-
 plt.show()
