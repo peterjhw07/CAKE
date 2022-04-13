@@ -15,7 +15,7 @@ stoich_a = 1  # insert stoichiometry of a
 stoich_b = 0  # insert stoichiometry of b
 stoich_prod = 0.5  # insert stoichiometry of prod
 
-alt_init_time = 2  # insert time at which species injection begins
+alt_init_time = 10  # insert time at which species injection begins
 time_unit = 0.1  # inset period of time in unit^-1
 run_time = 120  # insert run time for simulation
 
@@ -55,11 +55,13 @@ plt.plot(answer[:, 0], answer[:, 3]*100/start_max)
 plt.plot(answer[:, 0], answer[:, 5]*100/start_max)
 plt.xlim([0, run_time])
 # plt.ylim([0, max(answer[:, [1, 2, 3, 5]])])
-plt.xlabel('Time / min')
-plt.ylabel('Relative amount / %')
+plt.xlabel("Time")
+plt.xticks([])
+plt.ylabel("Relative amount / %")
 if init_b > 0 or add_conc_rate_b > 0:
-    plt.legend(["Reactant A", "Reactant B", "Catalyst", "Product"])
+    plt.legend(["Reactant A", "Reactant B", "Catalyst", "Product"], frameon=False)
 else:
-    plt.legend(["Reactant", "Catalyst", "Product"])
+    plt.legend(["Reactant", "Catalyst", "Product"],frameon=False)
     ...
+plt.savefig(r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Figures\kin_run.png', bbox_inches='tight')
 plt.show()

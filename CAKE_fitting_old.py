@@ -1,31 +1,31 @@
 # CAKE Fitting Programme
 # Known parameters and smoothing
-r0 = 3.18  # enter value of r0 in M dm^-3 or "" if data are given in M dm^-3
+r0 = 3.5  # enter value of r0 in M dm^-3 or "" if data are given in M dm^-3
 p0 = 0  # enter value of p0 in M dm^-3 or "" if data are given in M dm^-3
 p_end = r0  # enter end value of product in M dm^-3, r0 if equal to start r0 value, or "" if data are given in M dm^-3
-cat_add_rate = 1.57  # enter catalyst addition rate in M time_unit^-1
+cat_add_rate = 0.175  # enter catalyst addition rate in M time_unit^-1
 win = 1  # enter smoothing window (1 if smoothing not required)
 
 # Parameter fitting
 # Enter "" for any order, [exact value] for fixed variable or variable with bounds [estimate, factor difference] or [estimate, lower, upper]
-k_est = [1E-2, 1E3]  # enter rate constant in (M dm^-3)^? time_unit^-1
+k_est = [1E-1, 1E3]  # enter rate constant in (M dm^-3)^? time_unit^-1
 r_ord = [1, 0, 3]  # enter r order
-cat_ord = [1, 0, 3]  # enter cat order
-t0_est = [0.167, 0, 2]  # enter time at which injection began in time_unit^-1
+cat_ord = [1]  # enter cat order
+t0_est = [4.397, 0, 20]  # enter time at which injection began in time_unit^-1
 max_order = 3  # enter maximum possible order for species
 
 # Experimental data location
-file_name = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\WM_220317_RGB.xlsx'  # enter filename as r'file_name'
-sheet_name = 'Sheet2'  # enter sheet name as 'sheet_name'
+file_name = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Case studies\MS Olefin Metathesis\CAKE input.xlsx'  # enter filename as r'file_name'
+sheet_name = 'CD2'  # enter sheet name as 'sheet_name'
 t_col = 0  # enter time column
-TIC_col = ""  # enter TIC column or "" if no TIC
+TIC_col = 1  # enter TIC column or "" if no TIC
 r_col = 2  # enter [r] column or "" if no r
-p_col = ""  # enter [p] column or "" if no p
-scale_avg_num = 5  # enter number of data points from which to calculate r0 and p_end
+p_col = 5  # enter [p] column or "" if no p
+scale_avg_num = 1  # enter number of data points from which to calculate r0 and p_end
 
-fit_asp= 'r'  # enter aspect you want to fit to: r for reactant, p for product or r + p for both
+fit_asp = 'r'  # enter aspect you want to fit to: 'r' for reactant, 'p' for product or 'rp' for both
 
-pic_save = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Figures\5.png'
+pic_save = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Figures\CD2.1.png'
 
 import numpy as np
 import matplotlib.pyplot as plt
