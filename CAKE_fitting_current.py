@@ -2,33 +2,33 @@
 # Known parameters and smoothing
 stoich_r = 1  # insert stoichiometry of reactant, r
 stoich_p = 1  # insert stoichiometry of product, p
-r0 = 2.5  # enter value of r0 in M dm^-3 or "" if data are given in M dm^-3
+r0 = 0.1  # enter value of r0 in M dm^-3 or "" if data are given in M dm^-3
 p0 = 0  # enter value of p0 in M dm^-3 or "" if data are given in M dm^-3
 p_end = r0  # enter end value of product in M dm^-3, r0 if equal to start r0 value, or "" if data are given in M dm^-3
-cat_add_rate = 1.02E-4  # enter catalyst addition rate in M time_unit^-1
+cat_add_rate = 0.1  # enter catalyst addition rate in M time_unit^-1
 win = 1  # enter smoothing window (1 if smoothing not required)
 
 # Parameter fitting
 # Enter "" for any order, [exact value] for fixed variable or variable with bounds [estimate, factor difference] or [estimate, lower, upper]
 inc = ""  # enter increments between adjacent points for improved simulation, "" or 1 for using raw time points
-k_est = [1E-1, 1E3]  # enter rate constant in (M dm^-3)^? time_unit^-1
-r_ord = [1, 0, 3]  # enter r order
+k_est = [1E-2, 1E3]  # enter rate constant in (M dm^-3)^? time_unit^-1
+r_ord = [0]  # enter r order
 cat_ord = [1, 0, 3]  # enter cat order
-t0_est = [60, 60, 300]  # enter time at which injection began in time_unit^-1
+t0_est = [3, 3, 5]  # enter time at which injection began in time_unit^-1
 max_order = 3  # enter maximum possible order for species
 
 # Experimental data location
-file_name = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\PJHW_22040802.xlsx'  # enter filename as r'file_name'
-sheet_name = 'Sheet2'  # enter sheet name as 'sheet_name'
-t_col = 0  # enter time column
+file_name = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Case studies\AA\PJHW_22042202_260-270.xlsx'  # enter filename as r'file_name'
+sheet_name = 'Sheet1'  # enter sheet name as 'sheet_name'
+t_col = 2  # enter time column
 TIC_col = ""  # enter TIC column or "" if no TIC
-r_col = ""  # enter [r] column or "" if no r
-p_col = 1  # enter [p] column or "" if no p
-scale_avg_num = 5  # enter number of data points from which to calculate r0 and p_end
+r_col = 6  # enter [r] column or "" if no r
+p_col = ""  # enter [p] column or "" if no p
+scale_avg_num = 300  # enter number of data points from which to calculate r0 and p_end
 
-fit_asp = 'p'  # enter aspect you want to fit to: 'r' for reactant, 'p' for product or 'rp' for both
+fit_asp = 'r'  # enter aspect you want to fit to: 'r' for reactant, 'p' for product or 'rp' for both
 
-pic_save = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Figures\CD1.1.png'
+pic_save = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Figures\0UV3.1.png'
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -304,8 +304,8 @@ if len(t0_est) > 1:
 x_ax_scale = 1
 y_ax_scale = 1
 edge_adj = 0.02
-x_label_text = "Time / s"
-y_label_text = "Time / s"
+x_label_text = "Time / min"
+y_label_text = ""
 if r_col != "" and p_col != "":
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 if r_col != "":
@@ -369,5 +369,5 @@ if p_col != "":
         #ax2.savefig(pic_save)
         #ax2.show()
 plt.show()
-plt.plot(t * x_ax_scale, fit_rate * y_ax_scale, color='r')
-plt.show()
+# plt.plot(t * x_ax_scale, fit_rate * y_ax_scale, color='r')
+# plt.show()
