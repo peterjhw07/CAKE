@@ -15,19 +15,19 @@ if person == "JS":
     thresh_value = 25  # enter thresholding value (~10-200)
     dil_it = 3  # enter number of dilution iterations (1-10)
     erod_it = 3  # enter number of eroding iterations (1-10)
-    deskew_angle = -4  # enter clockwise angle to rotate image for deskewing (0 if no rotation)
+    deskew_angle = 0  # enter clockwise angle to rotate image for deskewing (0 if no rotation)
     show_first_image = "Yes"  # enter "Yes" if you would like to see first image modified and "No" if not
     exportpath = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\JS data 2.xlsx'  # Excel export path
 
 if person == "JS2":
-    directory = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Case studies\Mass O2 Evolution\JS220328'  # input path
-    bounding_box = (389, 342, 920, 503)  # enter cropping bounds in the form (x1, y1, x2, y2)
-    thresh_value = 80  # enter thresholding value (~10-200)
-    erod_it = 3  # enter number of eroding iterations (1-10)
-    dil_it = 1  # enter number of dilution iterations (1-10)
-    deskew_angle = 0.5  # enter clockwise angle to rotate image for deskewing (0 if no rotation)
+    directory = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Photos\JP220503'  # input path
+    bounding_box = (1380, 1240, 3270, 1820)  # enter cropping bounds in the form (x1, y1, x2, y2)
+    thresh_value = 65  # enter thresholding value (~10-200)
+    erod_it = 6  # enter number of eroding iterations (1-10)
+    dil_it = 5  # enter number of dilution iterations (1-10)
+    deskew_angle = 0.2  # enter clockwise angle to rotate image for deskewing (0 if no rotation)
     show_first_image = "Yes"  # enter "Yes" if you would like to see first image modified and "No" if not
-    exportpath = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Case studies\Mass O2 Evolution\JS220328.xlsx'  # Excel export path
+    exportpath = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Case studies\Mass O2 Evolution\JP220503.xlsx'  # Excel export path
 
 if person == "WM":
     directory = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Photos\M.17 LT INT Timelapse - DPA CAKE'  # input path
@@ -119,50 +119,43 @@ def get_date_taken(path):
 
 def get_date_modified(path):
     return os.path.getmtime(path)
-
 def pre_dec_8to0_switch(out_below_replace):
     if "8." in out_below_replace:
         out_below_replace = out_below_replace.replace('8.', '0.')
     return out_below_replace
-
 def post_dec_8to0_switch(out_below_replace):
     if ".8" in out_below_replace:
         out_below_replace = out_below_replace.replace('.8', '.0')
     return out_below_replace
-
 def pre_dec_3to0_switch(out_below_replace):
     if "3." in out_below_replace:
         out_below_replace = out_below_replace.replace('3.', '0.')
     return out_below_replace
-
 def remove_space(out_below_replace):
     out_below_replace = out_below_replace.replace(' ', '')
     return out_below_replace
-
+def remove_dot(out_below_replace):
+    out_below_replace = out_below_replace.replace('.', '')
+    return out_below_replace
 def only_symbol(out_below_replace):
     if out_below_replace == '.' or out_below_replace == '-' or out_below_replace == '':
         out_below_replace = '999'
     return out_below_replace
-
 def point_first(out_below_replace):
     if out_below_replace[0] == '.':
         out_below_replace = out_below_replace[1:]
     return out_below_replace
-
 def dash_not_point(out_below_replace):
     if '-' in out_below_replace and '.' not in out_below_replace:
         out_below_replace = out_below_replace.replace('-', '.')
     return out_below_replace
-
 def dash_not_first(out_below_replace):
     if '-' in out_below_replace[1:]:
         out_below_replace = "".join((out_below_replace[0], out_below_replace[1:].replace('-', '')))
     return out_below_replace
-
 def trunc(out_below_replace):
     out_below_replace = str(math.trunc((int(float(out_below_replace) * 100))) / 100)
     return out_below_replace
-
 def swap_8to0(out_below_replace):
     it_check = max([0, it - 6])
     check_total = np.ndarray.tolist(last_digit[it_check:it - 1])
@@ -172,37 +165,30 @@ def swap_8to0(out_below_replace):
             if '8' not in check_total and '9' not in check_total and '1' not in check_total:
                 out_below_replace = "".join((out_below_replace[0:-1], out_below_replace[-1].replace('8', '0')))
     return out_below_replace
-
 def first8to0_switch(out_below_replace):
     if "8" in out_below_replace[0] and len(out_below_replace) == 3:
         out_below_replace = "".join((out_below_replace[0].replace('8', '0'), out_below_replace[1:]))
     return out_below_replace
-
 def first6to0_switch(out_below_replace):
     if "6" in out_below_replace[0] and len(out_below_replace) == 3:
         out_below_replace = "".join((out_below_replace[0].replace('6', '0'), out_below_replace[1:]))
     return out_below_replace
-
 def second8to0_switch(out_below_replace):
     if "8" in out_below_replace[1] and len(out_below_replace) == 3:
         out_below_replace = "".join((out_below_replace[0], out_below_replace[1].replace('8', '0'), out_below_replace[2:]))
     return out_below_replace
-
 def digi4to0(out_below_replace):
     if len(out_below_replace) > 3:
         out_below_replace = "000"
     return out_below_replace
-
 def add_deci(out_below_replace):
     if len(out_below_replace) == 3:
         out_below_replace = "".join((out_below_replace[0:2], '.', out_below_replace[-1]))
     return out_below_replace
-
 def add_deci2(out_below_replace):
     if len(out_below_replace) > 3:
         out_below_replace = "".join((out_below_replace[:-3], '.', out_below_replace[-3:]))
     return out_below_replace
-
 def grad_2to0adj1(out_below_replace):
     if "2" in out_below_replace[1] and len(out_below_replace) == 4 and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -211,7 +197,6 @@ def grad_2to0adj1(out_below_replace):
         if sub_2 > sub_1:
             out_below_replace = "".join((out_below_replace[0], out_below_replace[1].replace('2', '1'), out_below_replace[2:]))
     return out_below_replace
-
 def grad_8to0adj(out_below_replace):
     if "8" in out_below_replace[-1] and len(out_below_replace) == 4 and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -220,7 +205,6 @@ def grad_8to0adj(out_below_replace):
         if sub_8 > sub_0:
             out_below_replace = "".join((out_below_replace[0:3], out_below_replace[-1].replace('8', '0')))
     return out_below_replace
-
 def grad_6to0adj2(out_below_replace):
     if "6" in out_below_replace[1] and len(out_below_replace) == 4 and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -229,7 +213,6 @@ def grad_6to0adj2(out_below_replace):
         if sub_6 > sub_0:
             out_below_replace = "".join((out_below_replace[0], out_below_replace[1].replace('6', '0'), out_below_replace[2:]))
     return out_below_replace
-
 def grad_6to0adj(out_below_replace):
     if "6" in out_below_replace[-1] and len(out_below_replace) == 4 and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -238,12 +221,10 @@ def grad_6to0adj(out_below_replace):
         if sub_6 > sub_0:
             out_below_replace = "".join((out_below_replace[0:3], out_below_replace[-1].replace('6', '0')))
     return out_below_replace
-
 def swap_8888to0000(out_below_replace):
     if out_below_replace == "8.888":
         out_below_replace = "0.000"
     return out_below_replace
-
 def grad_1st8to0adj(out_below_replace):
     if len(out_below_replace) >= 3 and "8" in out_below_replace[0] and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -253,7 +234,6 @@ def grad_1st8to0adj(out_below_replace):
         if sub_found > sub_alt:
             out_below_replace = alt_vers
     return out_below_replace
-
 def grad_2nd8to0adj(out_below_replace):
     if len(out_below_replace) >= 3 and "8" in out_below_replace[1] and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -263,7 +243,6 @@ def grad_2nd8to0adj(out_below_replace):
         if sub_found > sub_alt:
             out_below_replace = alt_vers
     return out_below_replace
-
 def grad_3rd8to0adj(out_below_replace):
     if len(out_below_replace) >= 3 and "8" in out_below_replace[2] and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -273,7 +252,6 @@ def grad_3rd8to0adj(out_below_replace):
         if sub_found > sub_alt:
             out_below_replace = alt_vers
     return out_below_replace
-
 def grad_4th8to0adj(out_below_replace):
     if len(out_below_replace) >= 4 and "8" in out_below_replace[3] and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -283,7 +261,6 @@ def grad_4th8to0adj(out_below_replace):
         if sub_found > sub_alt:
             out_below_replace = alt_vers
     return out_below_replace
-
 def grad_5th8to0adj(out_below_replace):
     if len(out_below_replace) >= 5 and "8" in out_below_replace[4] and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -293,7 +270,6 @@ def grad_5th8to0adj(out_below_replace):
         if sub_found > sub_alt:
             out_below_replace = alt_vers
     return out_below_replace
-
 def grad_6th8to0adj(out_below_replace):
     if len(out_below_replace) >= 6 and "8" in out_below_replace[5] and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -303,7 +279,6 @@ def grad_6th8to0adj(out_below_replace):
         if sub_found > sub_alt:
             out_below_replace = alt_vers
     return out_below_replace
-
 def grad_1st6to1adj(out_below_replace):
     if len(out_below_replace) >= 3 and "6" in out_below_replace[0] and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -313,7 +288,6 @@ def grad_1st6to1adj(out_below_replace):
         if sub_found > sub_alt:
             out_below_replace = alt_vers
     return out_below_replace
-
 def grad_2nd6to1adj(out_below_replace):
     if len(out_below_replace) >= 3 and "6" in out_below_replace[1] and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -323,7 +297,6 @@ def grad_2nd6to1adj(out_below_replace):
         if sub_found > sub_alt:
             out_below_replace = alt_vers
     return out_below_replace
-
 def grad_3rd6to1adj(out_below_replace):
     if len(out_below_replace) >= 3 and "6" in out_below_replace[2] and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -333,7 +306,6 @@ def grad_3rd6to1adj(out_below_replace):
         if sub_found > sub_alt:
             out_below_replace = alt_vers
     return out_below_replace
-
 def grad_4th6to1adj(out_below_replace):
     if len(out_below_replace) >= 4 and "6" in out_below_replace[3] and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -343,7 +315,6 @@ def grad_4th6to1adj(out_below_replace):
         if sub_found > sub_alt:
             out_below_replace = alt_vers
     return out_below_replace
-
 def grad_5th6to1adj(out_below_replace):
     if len(out_below_replace) >= 5 and "6" in out_below_replace[4] and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -353,7 +324,6 @@ def grad_5th6to1adj(out_below_replace):
         if sub_found > sub_alt:
             out_below_replace = alt_vers
     return out_below_replace
-
 def grad_6th6to1adj(out_below_replace):
     if len(out_below_replace) >= 6 and "6" in out_below_replace[5] and it > 1:
         pred_val = (2 * float(total[it - 1])) - float(total[it - 2])
@@ -363,7 +333,6 @@ def grad_6th6to1adj(out_below_replace):
         if sub_found > sub_alt:
             out_below_replace = alt_vers
     return out_below_replace
-
 def digi6to0(out_below_replace):
     if len(out_below_replace) > 6:
         out_below_replace = "0"
@@ -381,7 +350,6 @@ def JS_data(out_below_replace):
     out_below_replace = trunc(out_below_replace)
     out_below_replace = swap_8to0(out_below_replace)
     return out_below_replace
-
 def JS_data2(out_below_replace):
     out_below_replace = remove_space(out_below_replace)
     out_below_replace = only_symbol(out_below_replace)
@@ -401,7 +369,26 @@ def JS_data2(out_below_replace):
     out_below_replace = grad_6th6to1adj(out_below_replace)
     out_below_replace = digi6to0(out_below_replace)
     return out_below_replace
-
+def JS_data3(out_below_replace):
+    out_below_replace = remove_space(out_below_replace)
+    out_below_replace = remove_dot(out_below_replace)
+    out_below_replace = only_symbol(out_below_replace)
+    out_below_replace = add_deci2(out_below_replace)
+    out_below_replace = swap_8888to0000(out_below_replace)
+    out_below_replace = grad_1st8to0adj(out_below_replace)
+    out_below_replace = grad_2nd8to0adj(out_below_replace)
+    #out_below_replace = grad_3rd8to0adj(out_below_replace)
+    #out_below_replace = grad_4th8to0adj(out_below_replace)
+    #out_below_replace = grad_5th8to0adj(out_below_replace)
+    #out_below_replace = grad_6th8to0adj(out_below_replace)
+    #out_below_replace = grad_1st6to1adj(out_below_replace)
+    #out_below_replace = grad_2nd6to1adj(out_below_replace)
+    #out_below_replace = grad_3rd6to1adj(out_below_replace)
+    #out_below_replace = grad_4th6to1adj(out_below_replace)
+    #out_below_replace = grad_5th6to1adj(out_below_replace)
+    #out_below_replace = grad_6th6to1adj(out_below_replace)
+    #out_below_replace = digi6to0(out_below_replace)
+    return out_below_replace
 def WM_data(out_below_replace):
     out_below_replace = remove_space(out_below_replace)
     out_below_replace = only_symbol(out_below_replace)
@@ -449,12 +436,12 @@ for filename in files:
                     # config='-c tessedit_char_whitelist=0123456789.- --psm 7')
 
         out_below = pytesseract.image_to_string(img, lang="letsgodigital",
-                    config='-c tessedit_char_whitelist=0123456789 --psm 7')
+                    config='-c tessedit_char_whitelist=0123456789. --psm 7')
         # print("Output:", out_below)
 
         out_below_replace = out_below.strip()
 
-        out_below_replace = JS_data2(out_below_replace)
+        out_below_replace = JS_data3(out_below_replace)
         # out_below_replace = WM_data(out_below_replace)
 
         # print("Modified Output:", out_below_replace)
