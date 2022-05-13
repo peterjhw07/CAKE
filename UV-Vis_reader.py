@@ -9,12 +9,12 @@ import os
 import pandas as pd
 import math
 
-directory = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Case studies\AA\22050502_Kin' # enter file directory
+directory = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Case studies\UV-Vis Enzyme Catalysis\UV-Vis\21040701_Run' # enter file directory
 show_first_spec = "No"  # enter "Y" or "Yes" if you want to see first image, to aid region limit selection
-region_limits_pri = (260, 270)  # enter primary (x1, x2, y1, y2) area for pixel abstraction
+region_limits_pri = (330, 350)  # enter primary (x1, x2, y1, y2) area for pixel abstraction
 region_limits_sec = ""  # enter secondary area for pixel abstraction or "" if not required
 region_limits_ter = ""  # enter tertiary area for pixel abstraction or "" if not required
-exportpath = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Case studies\AA\PJHW_22050502_260-270.xlsx'  # enter Excel path for export
+exportpath = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Case studies\UV-Vis Enzyme Catalysis\UV-Vis\21040701_330-350.xlsx'  # enter Excel path for export
 
 def rect_add(region_limits, col):
     x_diff = abs(region_limits[0] - region_limits[1])
