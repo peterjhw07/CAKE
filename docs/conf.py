@@ -16,13 +16,13 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../'))
-import pybec
+import cake
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'PyBEC'
-copyright = ("2020, Brett Henderson. Project structure based on the "
+project = 'CAKE'
+copyright = ("2022, Peter WilliamsPeter Williams. Project structure based on the "
              "Computational Molecular Science Python Cookiecutter version 1.3")
 author = 'Brett Henderson'
 

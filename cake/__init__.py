@@ -5,7 +5,7 @@ addition of a reactant.
 """
 
 # Add imports here
-from cake import cake_fitting as cake
+from cake.cake_fitting import *
 
 # Handle versioneer
 from ._version import get_versions

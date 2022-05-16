@@ -1,7 +1,7 @@
 """CAKE Fitting Programme"""
-if __name__ == '__main__':
-    import matplotlib
-    matplotlib.use('TkAgg')
+# if __name__ == '__main__':
+import matplotlib
+matplotlib.use('TkAgg')
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -268,6 +268,20 @@ def read_data(file_name, sheet_name):
     except ValueError as e:
         return str(e)
 
+
+def get_cat_add_rate(cat_sol_conc, inject_rate, react_vol_init):
+    """
+        Compute the approximate catalyst addition rate in units of concentration / time.
+
+        Params
+        ------
+
+        Returns
+        -------
+
+
+    """
+    return (cat_sol_conc * inject_rate) / react_vol_init
 
 def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, cat_ord,
              t0_est, t_col, TIC_col, r_col, p_col, max_order=3, scale_avg_num=1, win=1, inc=1, fit_asp='r'):
@@ -616,7 +630,7 @@ def make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_or
 
 
 def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', return_image=False, save_disk=False,
-                      save_to='cake.svg'):
+                      save_to='cake.svg', return_fig=False):
     # graph results
     x_ax_scale = 1
     y_ax_scale = 1
@@ -675,6 +689,8 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
             ax2.set_xlabel(x_label_text)
             ax2.set_ylabel("[P] / $\mathregular{10^{-6}}$ M")
 
+    if return_fig:
+        return fig, fig.get_axes()
 
     # correct mimetype based on filetype (for displaying in browser)
     if f_format == 'svg':
@@ -706,7 +722,7 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
         return img, mimetype
 
 
-def pprint_cake(res_val, res_err, ss_res, r_squared, cat_pois):
+def pprint_cake(res_val, res_err, ss_res, r_squared, cat_pois, cat_pois_err):
     if cat_pois is None:
         cat_pois = "N/A"
     else:
@@ -726,6 +742,7 @@ Residual Sum of Squares for Optimization: {ss_res: 8.6f}.
 R^2 Value of Fit: {r_squared: 8.6f}.
 
 Catalyst Poisoning (if applicable): {cat_pois}
+Catalyst Poisoning Error: {cat_pois_err}
 """
 
     return result
