@@ -36,7 +36,14 @@ for it in range(0, len(df)):
                           file_name, sheet_name, t_col, TIC_col, r_col, p_col, scale_avg_num,
                           fit_asp, pic_save)
     time_taken = timeit.default_timer() - starttime
-    total[it] = [number, type, *output, time_taken]
+    xy_data = [output[0], *output[1], *output[2]]
+    param_val = output[3:]
+    total[it] = [number, type, *param_val, time_taken]
+
+    exportdf = pd.DataFrame({"Time": xy_data[0], "Concentration": xy_data[1], "Fit": xy_data[2]})
+    with pd.ExcelWriter(r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Programmes\Test_Spectra_Results_Fit.xlsx',
+                        mode='a', if_sheet_exists='replace') as writer:
+        exportdf.to_excel(writer, sheet_name=str(number), index=False)
 
 exportdf = pd.DataFrame({"Number":total[:, 0],"Type": total[:, 1],"k_val_est":total[:, 2],
                          "k_fit":total[:, 3], "k_fit_err":total[:, 4], "r_ord_fit":total[:, 5],
