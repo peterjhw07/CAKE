@@ -533,15 +533,6 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
         cat_pois = 0
         cat_pois_err = 0
 
-    if r_ord is not None and len(r_ord) == 1:
-        res_val[1], res_err[1] = [r_val, 0]
-    if cat_ord is not None and len(cat_ord) == 1:
-        res_val[2], res_err[2] = [cat_val, 0]
-    if t0_est is not None and len(t0_est) == 1:
-        res_val[3], res_err[3] = [t0_val, 0]
-    if k_est is not None and len(k_est) == 1:
-        res_val[0], res_err[0] = [k_val, 0]
-
     return t, r, p, fit, fit_p, fit_r, k_val, res_val, res_err, ss_res, r_squared, cat_pois, cat_pois_err
 
 
@@ -609,29 +600,29 @@ def make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_or
      }
     if len(k_est) == 1:
         param_dict['k Estimate'] = k_est[0]
-        param_dict['k Minimum'] = k_est[0] - (1E6 * k_est[0])
-        param_dict['k Maximum'] = k_est[0] + (1E6 * k_est[0])
+        param_dict['k Minimum'] = k_est[0] - (0.001 * k_est[0])
+        param_dict['k Maximum'] = k_est[0] + (0.001 * k_est[0])
     else:
         param_dict['k Estimate'], param_dict['k Minimum'], param_dict['k Maximum'] = k_est
 
     if len(r_ord) == 1:
         param_dict['R Order Estimate'] = r_ord[0]
-        param_dict['R Order Minimum'] = r_ord[0] - 1E6
-        param_dict['R Order Maximum'] = r_ord[0] + 1E6
+        param_dict['R Order Minimum'] = r_ord[0] - 0.001
+        param_dict['R Order Maximum'] = r_ord[0] + 0.001
     else:
         param_dict['R Order Estimate'], param_dict['R Order Minimum'], param_dict['R Order Maximum'] = r_ord
 
     if len(r_ord) == 1:
         param_dict['Cat Order Estimate'] = cat_ord[0]
-        param_dict['Cat Order Minimum'] = cat_ord[0] - 1E6
-        param_dict['Cat Order Maximum'] = cat_ord[0] + 1E6
+        param_dict['Cat Order Minimum'] = cat_ord[0] - 0.001
+        param_dict['Cat Order Maximum'] = cat_ord[0] + 0.001
     else:
         param_dict['Cat Order Estimate'], param_dict['Cat Order Minimum'], param_dict['Cat Order Maximum'] = cat_ord
 
     if len(t0_est) == 1:
         param_dict['Start Time Estimate'] = t0_est[0]
-        param_dict['Start Time Minimum'] = t0_est[0] - 1E6
-        param_dict['Start Time Maximum'] = t0_est[0] + 1E6
+        param_dict['Start Time Minimum'] = t0_est[0] - 0.001
+        param_dict['Start Time Maximum'] = t0_est[0] + 0.001
     else:
         param_dict['Start Time Estimate'], param_dict['Start Time Minimum'], param_dict['Start Time Maximum'] = t0_est
 
@@ -644,7 +635,7 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
     x_ax_scale = 1
     y_ax_scale = 1
     edge_adj = 0.02
-    x_label_text = "Time"
+    x_label_text = "Time / min"
     y_label_text = ""
     if r_col is not None and p_col is not None:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
@@ -661,7 +652,7 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
             plt.xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
             plt.ylim([min(t * y_ax_scale) - (edge_adj * max(r * y_ax_scale)), max(r * y_ax_scale) * (1 + edge_adj)])
             plt.xlabel(x_label_text)
-            plt.ylabel("[R]")
+            plt.ylabel("[R] / mM")
             # plt.savefig(pic_save)
             # plt.show()
         else:
@@ -673,7 +664,7 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
             ax1.set_xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
             ax1.set_ylim([min(r * x_ax_scale) - (edge_adj * max(r * x_ax_scale)), max(r * x_ax_scale) * (1 + edge_adj)])
             ax1.set_xlabel(x_label_text)
-            ax1.set_ylabel("[R]")
+            ax1.set_ylabel("[R] / $\mathregular{10^{-6}}$ M")
     if p_col is not None:
         if r_col is None:
             fig = plt.figure(figsize=(6, 6))
@@ -686,7 +677,7 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
             plt.xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
             plt.ylim([min(t * y_ax_scale) - (edge_adj * max(p * y_ax_scale)), max(p * y_ax_scale) * (1 + edge_adj)])
             plt.xlabel(x_label_text)
-            plt.ylabel("[P]")
+            plt.ylabel("[P] / mM")
         else:
             if len(t) <= 50:
                 ax2.scatter(t * x_ax_scale, p * y_ax_scale, color='k')
@@ -696,7 +687,7 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
             ax2.set_xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
             ax2.set_ylim([min(p * x_ax_scale) - (edge_adj * max(p * x_ax_scale)), max(p * x_ax_scale) * (1 + edge_adj)])
             ax2.set_xlabel(x_label_text)
-            ax2.set_ylabel("[P]")
+            ax2.set_ylabel("[P] / $\mathregular{10^{-6}}$ M")
 
     if return_fig:
         return fig, fig.get_axes()
