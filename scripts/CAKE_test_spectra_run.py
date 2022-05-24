@@ -9,7 +9,7 @@ from datetime import date
 def error_bounds_sort(substrate):
     if substrate is None:
         substrate_adj = substrate
-    elif ', ' not in str(substrate):
+    elif len(str(substrate)) == 1:
         substrate_adj = [substrate]
     else:
         split = substrate.split(', ')
