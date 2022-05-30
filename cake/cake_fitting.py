@@ -333,7 +333,7 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
     fit_asp : str
         Aspect you want to fit to: 'r' for reactant, 'p' for product or 'rp' for both
     """
-
+    inc += 1
     t = data_smooth(df, t_col, win)
     TIC = None
     if TIC_col is not None:
@@ -343,18 +343,18 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
         r = data_smooth(df, r_col, win)
         r = tic_norm(r, TIC)
         if r0 is None:
-            r0 = np.mean(r[0:scale_avg_num])
+            r0 = np.mean(r[:scale_avg_num])
         else:
-            r_scale = np.mean(r[0:scale_avg_num]) / r0
+            r_scale = np.mean(r[:scale_avg_num]) / r0
             r = r / r_scale
     p = None
     if p_col is not None:
         p = data_smooth(df, p_col, win)
         p = tic_norm(p, TIC)
         if p_end is None:
-            p_end = np.mean(p[-scale_avg_num:-1])
+            p_end = np.mean(p[-scale_avg_num:])
         else:
-            p_scale = np.mean(p[-scale_avg_num:-1]) / p_end
+            p_scale = np.mean(p[-scale_avg_num:]) / p_end
             p = p / p_scale
 
     # define half lives for different fit aspects
@@ -533,7 +533,7 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
         cat_pois = 0
         cat_pois_err = 0
 
-    return t, r, p, fit, fit_p, fit_r, res_val, res_err, ss_res, r_squared, cat_pois, cat_pois_err
+    return t, r, p, fit, fit_p, fit_r, k_val, res_val, res_err, ss_res, r_squared, cat_pois, cat_pois_err
 
 
 def write_fit_data(filename, df, param_dict, t, r, p, fit_p, fit_r, res_val, res_err, ss_res, r_squared, cat_pois,
@@ -646,8 +646,8 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
             if len(t) <= 50:
                 plt.scatter(t * x_ax_scale, r * y_ax_scale, color='k')  # plt.plot(t, r * 1E6, color='k')
             else:
-                plt.plot(t * x_ax_scale, r * ax_scale, color='k')  # plt.plot(t, r * 1E6, color='k')
-            plt.plot(t, fit * ax_scale, color='r')
+                plt.plot(t * x_ax_scale, r * y_ax_scale, color='k')  # plt.plot(t, r * 1E6, color='k')
+            plt.plot(t, fit * y_ax_scale, color='r')
             # plt.title("Raw")
             plt.xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
             plt.ylim([min(t * y_ax_scale) - (edge_adj * max(r * y_ax_scale)), max(r * y_ax_scale) * (1 + edge_adj)])
@@ -802,7 +802,7 @@ if __name__ == "__main__":
     df = read_data(file_name, sheet_name)
     CAKE = fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, cat_ord,
                     t0_est, t_col, TIC_col, r_col, p_col, max_order, scale_avg_num, win, inc, fit_asp)
-    t, r, p, fit, fit_p, fit_r, res_val, res_err, ss_res, r_squared, cat_pois, cat_pois_err = CAKE
+    t, r, p, fit, fit_p, fit_r, k_val, res_val, res_err, ss_res, r_squared, cat_pois, cat_pois_err = CAKE
 
     html = plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', return_image=False,
                              save_disk=True, save_to=pic_save)

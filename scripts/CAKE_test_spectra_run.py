@@ -1,12 +1,13 @@
 # CAKE Fitting Programme
 import numpy as np
 import pandas as pd
-from CAKE_current import CAKE_overall
+import cake
+# from CAKE_current import CAKE_overall
 import timeit
 from datetime import date
 
 def error_bounds_sort(substrate):
-    if substrate == '""':
+    if substrate is None:
         substrate_adj = substrate
     elif len(str(substrate)) == 1:
         substrate_adj = [substrate]
@@ -17,6 +18,7 @@ def error_bounds_sort(substrate):
 
 # create dataframe
 df = pd.read_excel(r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Programmes\Test_Spectra.xlsx', sheet_name='Parameters')
+df.replace('""', None, inplace=True)
 
 total = np.empty([len(df), 16], object)
 for it in range(0, len(df)):
@@ -31,19 +33,22 @@ for it in range(0, len(df)):
     r_ord = error_bounds_sort(r_ord)
     cat_ord = error_bounds_sort(cat_ord)
     t0_est = error_bounds_sort(t0_est)
-    output = CAKE_overall(stoich_r, stoich_p, r0, p0, p_end, react_vol_init, cat_sol_conc, inject_rate, win,
-                          inc, k_est, r_ord, cat_ord, t0_est, max_order,
-                          file_name, sheet_name, t_col, TIC_col, r_col, p_col, scale_avg_num,
-                          fit_asp, pic_save)
+    data = cake.read_data(file_name, sheet_name)
+    cat_add_rate = cake.get_cat_add_rate(cat_sol_conc, inject_rate, react_vol_init)
+    output = cake.fit_cake(data, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, cat_ord, t0_est, t_col,
+                           TIC_col, r_col, p_col, max_order, scale_avg_num, win, inc, fit_asp)
+    t, r, p, fit, fit_p, fit_r, k_val, res_val, res_err, ss_res, r_squared, cat_pois, cat_pois_err = output
     time_taken = timeit.default_timer() - starttime
-    xy_data = [output[0], *output[1], *output[2]]
-    param_val = output[3:]
-    total[it] = [number, type, *param_val, time_taken]
 
-    exportdf = pd.DataFrame({"Time": xy_data[0], "Concentration": xy_data[1], "Fit": xy_data[2]})
+    exportdf = pd.DataFrame({"Time": t, "Concentration R": r, "Concentration P": p,
+                             "Fit R": fit_r, "Fit P": fit_p})
     with pd.ExcelWriter(r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Programmes\Test_Spectra_Results_Fit.xlsx',
                         mode='a', if_sheet_exists='replace') as writer:
         exportdf.to_excel(writer, sheet_name=str(number), index=False)
+
+    total[it] = [number, type, k_val, res_val[0], res_err[0],
+                 res_val[1], res_err[1], res_val[2], res_err[2], res_val[3], res_err[3],
+                 cat_pois, cat_pois_err, ss_res, r_squared, time_taken]
 
 exportdf = pd.DataFrame({"Number":total[:, 0],"Type": total[:, 1],"k_val_est":total[:, 2],
                          "k_fit":total[:, 3], "k_fit_err":total[:, 4], "r_ord_fit":total[:, 5],
