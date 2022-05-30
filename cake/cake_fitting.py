@@ -1,7 +1,7 @@
 """CAKE Fitting Programme"""
 # if __name__ == '__main__':
-import matplotlib
-matplotlib.use('TkAgg')
+# import matplotlib
+# matplotlib.use('Agg')
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
