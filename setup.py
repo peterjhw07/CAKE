@@ -52,7 +52,7 @@ setup(
     install_requires=[    # Required packages, pulls from pip if needed; do not use for Conda deployment
         'matplotlib>=3.0.3',
         'numpy>=1.21.5',
-        'pandas>=1.3.5',
+        'pandas>=1.1.5',
         'openpyxl==3.0.9',
         'scipy>=1.7.3',
     ],

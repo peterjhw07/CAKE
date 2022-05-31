@@ -635,7 +635,7 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
     x_ax_scale = 1
     y_ax_scale = 1
     edge_adj = 0.02
-    x_label_text = "Time / min"
+    x_label_text = "Time"
     y_label_text = ""
     if r_col is not None and p_col is not None:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
@@ -652,7 +652,7 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
             plt.xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
             plt.ylim([min(t * y_ax_scale) - (edge_adj * max(r * y_ax_scale)), max(r * y_ax_scale) * (1 + edge_adj)])
             plt.xlabel(x_label_text)
-            plt.ylabel("[R] / mM")
+            plt.ylabel("[R]")
             # plt.savefig(pic_save)
             # plt.show()
         else:
@@ -664,7 +664,7 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
             ax1.set_xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
             ax1.set_ylim([min(r * x_ax_scale) - (edge_adj * max(r * x_ax_scale)), max(r * x_ax_scale) * (1 + edge_adj)])
             ax1.set_xlabel(x_label_text)
-            ax1.set_ylabel("[R] / $\mathregular{10^{-6}}$ M")
+            ax1.set_ylabel("[R]")
     if p_col is not None:
         if r_col is None:
             fig = plt.figure(figsize=(6, 6))
@@ -677,7 +677,7 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
             plt.xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
             plt.ylim([min(t * y_ax_scale) - (edge_adj * max(p * y_ax_scale)), max(p * y_ax_scale) * (1 + edge_adj)])
             plt.xlabel(x_label_text)
-            plt.ylabel("[P] / mM")
+            plt.ylabel("[P]")
         else:
             if len(t) <= 50:
                 ax2.scatter(t * x_ax_scale, p * y_ax_scale, color='k')
@@ -687,7 +687,7 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
             ax2.set_xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
             ax2.set_ylim([min(p * x_ax_scale) - (edge_adj * max(p * x_ax_scale)), max(p * x_ax_scale) * (1 + edge_adj)])
             ax2.set_xlabel(x_label_text)
-            ax2.set_ylabel("[P] / $\mathregular{10^{-6}}$ M")
+            ax2.set_ylabel("[P]")
 
     if return_fig:
         return fig, fig.get_axes()
