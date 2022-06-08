@@ -1,4 +1,4 @@
 # CAKE
 
-Constant Addition Kinetic Elucidation is a method for analyzing the kinetics of reactions performed under the constant 
+Continous Addition Kinetic Elucidation is a method for analyzing the kinetics of reactions performed under the continous 
 addition of a reactant.
