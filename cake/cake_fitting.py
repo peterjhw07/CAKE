@@ -227,8 +227,8 @@ def get_cat_add_rate(cat_sol_conc, inject_rate, react_vol_init):
     """
     return (cat_sol_conc * inject_rate) / react_vol_init
 
-def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, cat_ord,
-             t0_est, t_col, TIC_col, r_col, p_col, max_order=3, scale_avg_num=0, win=1, inc=1, fit_asp='r'):
+def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, cat_ord, t0_est,
+             t_col, TIC_col, r_col, p_col, min_order=0, max_order=2, scale_avg_num=0, win=1, inc=1, fit_asp='r'):
     """
     Params
     ------
@@ -251,10 +251,10 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
         variable with bounds [estimate, factor difference] or [estimate, lower, upper].
     r_ord : list of int
         Reactant order. Can be specified as [exact value] for fixed variable or
-        variable with bounds [estimate, lower, upper]. If None, bounds set automatically as [1, 0, `max_order`]
+        variable with bounds [estimate, lower, upper]. If None, bounds set automatically as [1, 'min_order', `max_order`]
     cat_ord : list of int
         Catalyst order. Can be specified as [exact value] for fixed variable or
-        variable with bounds [estimate, lower, upper]. If None, bounds set automatically as [1, 0, `max_order`]
+        variable with bounds [estimate, lower, upper]. If None, bounds set automatically as [1, 'min_order', `max_order`]
     t0_est : list of float
         Time at which injection began in time_unit^-1. Can be specified as [exact value] for fixed variable or
         variable with bounds [estimate, lower, upper]
@@ -266,10 +266,12 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
         Index of reactant column or None if no reactant
     p_col : int or str
         Index of product column or None if no product
+    min_order : int, optional
+        Minimum possible order for species. Default 0
     max_order : int, optional
-        Maximum possible order for species. Default 3.
+        Maximum possible order for species. Default 2
     scale_avg_num : int, optional
-        Number of data points from which to calculate r0 and p_end. Default 1
+        Number of data points from which to calculate r0 and p_end. Default 0 (no scaling)
     win : int, optional
         Smoothing window, default 1 if smoothing not required
     inc : int, optional
@@ -328,7 +330,7 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
     bound_adj = 1E-6
     if r_ord is None:
         r_val = 1
-        r_min = 0
+        r_min = min_order
         r_max = max_order
     elif len(r_ord) == 1:
         r_val = r_ord[0]
@@ -340,7 +342,7 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
         r_max = r_ord[2]
     if cat_ord is None:
         cat_val = 1
-        cat_min = 0
+        cat_min = min_order
         cat_max = max_order
     elif len(cat_ord) == 1:
         cat_val = cat_ord[0]
@@ -359,8 +361,9 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
         t0_min = t0_est[1]
         t0_max = t0_est[2]
     if k_est is None or k_est == 0:
-        k_guess = np.zeros([16, 4])
-        k_guess[:] = [[x, y, 0, 0] for x in [0, 1, 2, 3] for y in [0, 1, 2, 3]]
+        test_orders = list(range(min_order, max_order))
+        k_guess = np.zeros([len(test_orders) ** 2, 4])
+        k_guess[:] = [[x, y, 0, 0] for x in test_orders for y in test_orders]
         for it in range(0, len(k_guess)):
             if k_guess[it, 0] != 1:
                 k_guess[it, 2] = est_k_order(k_guess[it, 0], k_guess[it, 1], t0_val, r0, cat_add_rate, half_life)
@@ -507,7 +510,7 @@ def write_fit_data_temp(df, param_dict, t, r, p, fit_p, fit_r, res_val, res_err,
 
 
 def make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, cat_ord,
-                    t0_est, t_col, TIC_col, r_col, p_col, max_order, scale_avg_num, win, inc, fit_asp):
+                    t0_est, t_col, TIC_col, r_col, p_col, min_order, max_order, scale_avg_num, win, inc, fit_asp):
     param_dict = {'Stoich R': stoich_r,
      'Stoich P': stoich_p,
      'R_0': r0,
@@ -518,6 +521,7 @@ def make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_or
      'R col': r_col,
      'P col': p_col,
      'Time col': t_col,
+     'Min Order': min_order,
      'Max Order': max_order,
      'Concentration Calibration Points': scale_avg_num,
      'Smoothing Window': win,
@@ -690,24 +694,8 @@ if __name__ == "__main__":
     r_ord = [1, 0, 3]  # enter r order
     cat_ord = [1, 0, 3]  # enter cat order
     t0_est = [60, 60, 300]  # enter time at which injection began in time_unit^-1
-    max_order = 3  # enter maximum possible order for species
-
-    # stoich_r = 1  # insert stoichiometry of reactant, r
-    # stoich_p = 1  # insert stoichiometry of product, p
-    # r0 = 3.18  # enter value of r0 in M dm^-3 or None if data are given in M dm^-3
-    # p0 = 0  # enter value of p0 in M dm^-3 or None if data are given in M dm^-3
-    # p_end = r0  # enter end value of product in M dm^-3, r0 if equal to start r0 value, or None if data are given in M dm^-3
-    # cat_add_rate = 1.57  # enter catalyst addition rate in M time_unit^-1
-    # win = 1  # enter smoothing window (1 if smoothing not required)
-    #
-    # # Parameter fitting
-    # # Enter None for any order, [exact value] for fixed variable or variable with bounds [estimate, factor difference] or [estimate, lower, upper]
-    # inc = 2  # enter increments between adjacent points for improved simulation, None or 1 for using raw time points
-    # k_est = [1E-2, 1E3]  # enter rate constant in (M dm^-3)^? time_unit^-1
-    # r_ord = [1, 0, 3]  # enter r order
-    # cat_ord = [1, 0, 3]  # enter cat order
-    # t0_est = [0.167]  # enter time at which injection began in time_unit^-1
-    # max_order = 3  # enter maximum possible order for species
+    min_order = 0  # enter minimum possible order for species
+    max_order = 2  # enter maximum possible order for species
 
     # Experimental data location
     file_name = r'/Users/bhenders/Desktop/CAKE/WM_220317_Light_Intensity.xlsx'  # enter filename as r'file_name'
@@ -727,14 +715,14 @@ if __name__ == "__main__":
 
     df = read_data(file_name, sheet_name)
     CAKE = fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, cat_ord,
-                    t0_est, t_col, TIC_col, r_col, p_col, max_order, scale_avg_num, win, inc, fit_asp)
+                    t0_est, t_col, TIC_col, r_col, p_col, min_order, max_order, scale_avg_num, win, inc, fit_asp)
     t, r, p, fit, fit_p, fit_r, k_val, res_val, res_err, ss_res, r_squared, cat_pois, cat_pois_err = CAKE
 
     html = plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', return_image=False,
                              save_disk=True, save_to=pic_save)
 
-    param_dict = make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, cat_ord,
-                    t0_est, t_col, TIC_col, r_col, p_col, max_order, scale_avg_num, win, inc, fit_asp)
+    param_dict = make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, cat_ord, t0_est,
+                    t_col, TIC_col, r_col, p_col, min_order, min_order, max_order, scale_avg_num, win, inc, fit_asp)
 
     # write_fit_data(xlsx_save, df, param_dict, t, r, p, fit_p, fit_r, res_val, res_err, ss_res, r_squared, cat_pois)
     file, _ = write_fit_data_temp(df, param_dict, t, r, p, fit_p, fit_r, res_val, res_err, ss_res, r_squared, cat_pois,
