@@ -15,7 +15,7 @@ log.setLevel(logging.DEBUG)
 
 
 # general kinetic simulator
-def eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, t_fit, k, x, y, t0):
+def eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, t_fit, k, x, y, t0):
     """
     Function Description
 
@@ -29,19 +29,21 @@ def eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, t_fit, k, x, y, t0):
     """
     r_calc = np.zeros(len(t_fit))
     p_calc = np.zeros(len(t_fit))
-    rate_it = np.zeros(len(t_fit))
+    rate_calc = np.zeros(len(t_fit))
     r_calc[0] = r0
     p_calc[0] = p0
-    rate_it[0] = k * (r_calc[0] ** x) * ((max(0, t_fit[0] - t0) * cat_add_rate) ** y)
+    rate_calc[0] = k * (r_calc[0] ** x) * ((max(0, t_fit[0] - t0) * cat_add_rate) ** y)
     for it in range(1, len(t_fit)):
         time_span = t_fit[it] - t_fit[it - 1]
-        r_calc[it] = max(0, r_calc[it - 1] - (time_span * rate_it[it - 1] * stoich_r))
-        p_calc[it] = max(0, p_calc[it - 1] + (time_span * rate_it[it - 1] * stoich_p))
-        rate_it[it] = k * (r_calc[it] ** x) * ((max(0, t_fit[it] - t0) * cat_add_rate) ** y)
-    return [r_calc, p_calc, rate_it]
+        r_calc[it] = max(0, r_calc[it - 1] - (time_span * rate_calc[it - 1] * stoich_r))
+        p_calc[it] = max(0, p_calc[it - 1] + (time_span * rate_calc[it - 1] * stoich_p))
+        rate_calc[it] = k * (r_calc[it] ** x) * ((max(0, t_fit[it] - t0) * cat_add_rate) ** y)
+    exp_t_rows = list(range(0, len(t_fit), inc - 1))
+    r_calc, p_calc, rate_calc = r_calc[exp_t_rows], p_calc[exp_t_rows], rate_calc[exp_t_rows]
+    return [r_calc, p_calc, rate_calc]
 
 
-def eq_sim_multi(stoich_r, stoich_p, r0, p0, cat_add_rate, t, k, x, y, t0):
+def eq_sim_multi(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, t, k, x, y, t0):
     """
     Function Description
 
@@ -54,7 +56,7 @@ def eq_sim_multi(stoich_r, stoich_p, r0, p0, cat_add_rate, t, k, x, y, t0):
 
     """
     t_fit = t[:int(len(t) / 2)]
-    [r_calc, p_calc, rate_it] = eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, t_fit, k, x, y, t0)
+    [r_calc, p_calc, rate_it] = eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, t_fit, k, x, y, t0)
     total_calc = np.append(r_calc, p_calc)
     return total_calc
 
@@ -78,64 +80,6 @@ def add_sim_t(t, inc):
         t_fit[it * len(new_t_it):(it * len(new_t_it)) + len(new_t_it)] = new_t_it
     t_fit[-1] = t[-1]
     return t_fit
-
-
-# find the location of original t values
-def find_exp_t(t_fit, out, inc):
-    """
-    Function Description
-
-    Params
-    ------
-
-    Returns
-    -------
-
-
-    """
-    out_calc_inc = out[list(range(0, len(t_fit), inc - 1))]
-    return out_calc_inc
-
-
-# equivalent to previous simulation functions but with more increments (x4)
-def eq_sim_gen_inc(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, t, k, x, y, t0):
-    """
-    Function Description
-
-    Params
-    ------
-
-    Returns
-    -------
-
-
-    """
-    t_fit = add_sim_t(t, inc)
-    [r_calc, p_calc, rate_it] = eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, t_fit, k, x, y, t0)
-    r_calc_inc = find_exp_t(t_fit, r_calc, inc)
-    p_calc_inc = find_exp_t(t_fit, p_calc, inc)
-    rate_it_inc = find_exp_t(t_fit, rate_it, inc)
-    return [r_calc_inc, p_calc_inc, rate_it_inc]
-
-
-def eq_sim_multi_inc(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, t, k, x, y, t0):
-    """
-    Function Description
-
-    Params
-    ------
-
-    Returns
-    -------
-
-
-    """
-    t_fit = add_sim_t(t[:int(len(t) / 2)], inc)
-    r_calc, p_calc, _ = eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, t_fit, k, x, y, t0)
-    r_calc_inc = find_exp_t(t_fit, r_calc, inc)
-    p_calc_inc = find_exp_t(t_fit, p_calc, inc)
-    total_calc_inc = np.append(r_calc_inc, p_calc_inc)
-    return total_calc_inc
 
 
 # to estimate a k value
@@ -284,7 +228,7 @@ def get_cat_add_rate(cat_sol_conc, inject_rate, react_vol_init):
     return (cat_sol_conc * inject_rate) / react_vol_init
 
 def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, cat_ord,
-             t0_est, t_col, TIC_col, r_col, p_col, max_order=3, scale_avg_num=1, win=1, inc=1, fit_asp='r'):
+             t0_est, t_col, TIC_col, r_col, p_col, max_order=3, scale_avg_num=0, win=1, inc=1, fit_asp='r'):
     """
     Params
     ------
@@ -333,6 +277,14 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
     fit_asp : str
         Aspect you want to fit to: 'r' for reactant, 'p' for product or 'rp' for both
     """
+
+    def eq_sim_r(tsim, k, x, y, t0):
+        return eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, tsim, k, x, y, t0)[0]
+    def eq_sim_p(tsim, k, x, y, t0):
+        return eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, tsim, k, x, y, t0)[1]
+    def eq_sim_multi_fit(tsim, k, x, y, t0):
+        return eq_sim_multi(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, tsim, k, x, y, t0)
+
     inc += 1
     t = data_smooth(df, t_col, win)
     TIC = None
@@ -344,7 +296,7 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
         r = tic_norm(r, TIC)
         if r0 is None:
             r0 = np.mean(r[:scale_avg_num])
-        else:
+        elif scale_avg_num > 0:
             r_scale = np.mean(r[:scale_avg_num]) / r0
             r = r / r_scale
     p = None
@@ -353,7 +305,7 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
         p = tic_norm(p, TIC)
         if p_end is None:
             p_end = np.mean(p[-scale_avg_num:])
-        else:
+        elif scale_avg_num > 0:
             p_scale = np.mean(p[-scale_avg_num:]) / p_end
             p = p / p_scale
 
@@ -370,6 +322,7 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
         x_data = np.append(t, t)
         y_data = np.append(r, p)
         half_life = (half_life_calc(r0, t, r) + half_life_calc(p_end, t, p)) / 2
+    x_data_add = add_sim_t(x_data, inc)
 
     # define inital values and lower and upper limits for parameters to fit: k, x, y (orders wrt. r and p) and t0
     bound_adj = 1E-6
@@ -413,8 +366,12 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
                 k_guess[it, 2] = est_k_order(k_guess[it, 0], k_guess[it, 1], t0_val, r0, cat_add_rate, half_life)
             else:
                 k_guess[it, 2] = est_k_first_order(k_guess[it, 1], t0_val, cat_add_rate, half_life)
-            fit_guess = eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, x_data, k_guess[it, 2], k_guess[it, 0],
-                                   k_guess[it, 1], t0_val)[0]
+            if fit_asp == 'r':
+                fit_guess = eq_sim_r(x_data_add, k_guess[it, 2], k_guess[it, 0], k_guess[it, 1], t0_val)
+            elif fit_asp == 'p':
+                fit_guess = eq_sim_p(x_data_add, k_guess[it, 2], k_guess[it, 0], k_guess[it, 1], t0_val)
+            elif 'r' in fit_asp and 'p' in fit_asp:
+                fit_guess = eq_sim_multi_fit(x_data_add, k_guess[it, 2], k_guess[it, 0], k_guess[it, 1], t0_val)
             _, k_guess[it, 3] = residuals(y_data, fit_guess)
         index = np.where(k_guess == max(k_guess[:, 3]))
         index_first = index[0]
@@ -439,87 +396,47 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, k_est, r_ord, 
     # apply fittings, determine optimal parameters and determine resulting fits
     fit, fit_p, fit_r, cat_pois = None, None, None, None
     if fit_asp == 'r':
-
-        def eq_sim_r(tsim, k, x, y, t0):
-            return eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, tsim, k, x, y, t0)[0]
-
-        def eq_sim_r_inc(tsim, k, x, y, t0):
-            return eq_sim_gen_inc(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, tsim, k, x, y, t0)[0]
-
-        if inc is None or inc == 1:
-            res = optimize.curve_fit(eq_sim_r, x_data, y_data, init_param, maxfev=10000,
-                                     bounds=((k_min, r_min, cat_min, t0_min), (k_max, r_max, cat_max, t0_max)))
-        else:
-            res = optimize.curve_fit(eq_sim_r_inc, x_data, y_data, init_param, maxfev=10000,
+        res = optimize.curve_fit(eq_sim_r, x_data_add, y_data, init_param, maxfev=10000,
                                      bounds=((k_min, r_min, cat_min, t0_min), (k_max, r_max, cat_max, t0_max)))
         kf, xf, yf, t0f = res[0]
         if p_col is None:
-            fit = eq_sim_r(x_data, kf, xf, yf, t0f)
+            fit = eq_sim_r(x_data_add, kf, xf, yf, t0f)
             fit_r = fit
         else:
             x_data = np.append(t, t)
             y_data = np.append(r, p)
-            if inc is None or inc == 1:
-                fit = eq_sim_multi(stoich_r, stoich_p, r0, p0, cat_add_rate, x_data, kf, xf, yf, t0f)
-            else:
-                fit = eq_sim_multi_inc(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, x_data, kf, xf, yf, t0f)
+            x_data_add = add_sim_t(x_data, inc)
+            fit = eq_sim_multi(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, x_data_add, kf, xf, yf, t0f)
             fit_r = fit[:int(len(x_data) / 2)]
             fit_p = fit[int(len(x_data) / 2):]
+
     elif fit_asp == 'p':
-
-        def eq_sim_p(tsim, k, x, y, t0):
-            return eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, tsim, k, x, y, t0)[1]
-
-        def eq_sim_p_inc(tsim, k, x, y, t0):
-            return eq_sim_gen_inc(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, tsim, k, x, y, t0)[1]
-
-        if inc is None or inc == 1:
-            res = optimize.curve_fit(eq_sim_p, x_data, y_data, init_param, maxfev=10000,
-                                     bounds=((k_min, r_min, cat_min, t0_min), (k_max, r_max, cat_max, t0_max)))
-        else:
-            res = optimize.curve_fit(eq_sim_p_inc, x_data, y_data, init_param, maxfev=10000,
+        res = optimize.curve_fit(eq_sim_p, x_data_add, y_data, init_param, maxfev=10000,
                                      bounds=((k_min, r_min, cat_min, t0_min), (k_max, r_max, cat_max, t0_max)))
         kf, xf, yf, t0f = res[0]
         if r_col is None:
-            if inc is None or inc == 1:
-                fit = eq_sim_p(x_data, kf, xf, yf, t0f)
-            else:
-                fit = eq_sim_p_inc(x_data, kf, xf, yf, t0f)
+            fit = eq_sim_p(x_data_add, kf, xf, yf, t0f)
             fit_p = fit
         else:
             x_data = np.append(t, t)
             y_data = np.append(r, p)
-            if inc is None or inc == 1:
-                fit = eq_sim_multi(stoich_r, stoich_p, r0, p0, cat_add_rate, x_data, kf, xf, yf, t0f)
-            else:
-                fit = eq_sim_multi_inc(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, x_data, kf, xf, yf, t0f)
+            x_data_add = add_sim_t(x_data, inc)
+            fit = eq_sim_multi(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, x_data_add, kf, xf, yf, t0f)
             fit_r = fit[:int(len(x_data) / 2)]
             fit_p = fit[int(len(x_data) / 2):]
+
     elif 'r' in fit_asp and 'p' in fit_asp:
-        if inc is None or inc == 1:
-            def eq_sim_multi_fit(tsim, k, x, y, t0):
-                return eq_sim_multi(stoich_r, stoich_p, r0, p0, cat_add_rate, tsim, k, x, y, t0)
-            res = optimize.curve_fit(eq_sim_multi_fit, x_data, y_data, init_param, maxfev=10000,
+        res = optimize.curve_fit(eq_sim_multi_fit, x_data_add, y_data, init_param, maxfev=10000,
                                      bounds=((k_min, r_min, cat_min, t0_min), (k_max, r_max, cat_max, t0_max)))
-            kf, xf, yf, t0f = res[0]
-            fit = eq_sim_multi(stoich_r, stoich_p, r0, p0, cat_add_rate, x_data, kf, xf, yf, t0f)
-        else:
-            def eq_sim_multi_inc_fit(t, k, r, c, t0):
-                return eq_sim_multi_inc(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, t, k, r, c, t0)
-            res = optimize.curve_fit(eq_sim_multi_inc_fit, x_data, y_data, init_param, maxfev=10000,
-                                     bounds=((k_min, r_min, cat_min, t0_min), (k_max, r_max, cat_max, t0_max)))
-            kf, xf, yf, t0f = res[0]
-            fit = eq_sim_multi_inc(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, x_data, kf, xf, yf, t0f)
+        kf, xf, yf, t0f = res[0]
+        fit = eq_sim_multi(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, x_data_add, kf, xf, yf, t0f)
         fit_r = fit[:int(len(x_data) / 2)]
         fit_p = fit[int(len(x_data) / 2):]
-    if inc is None or inc == 1:
-        fit_rate = eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, x_data, kf, xf, yf, t0f)[2]
-    else:
-        fit_rate = eq_sim_gen_inc(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, x_data, kf, xf, yf, t0f)
+    fit_rate = eq_sim_gen(stoich_r, stoich_p, r0, p0, cat_add_rate, inc, x_data_add, kf, xf, yf, t0f)[2]
 
     # calculate residuals and errors
     res_val = res[0]
-    res_err = np.sqrt(np.diag(res[1]))
+    res_err = np.sqrt(np.diag(res[1]))  # for 1SD
     ss_res, r_squared = residuals(y_data, fit)
 
     # calculate catalyst poisoning, if any
