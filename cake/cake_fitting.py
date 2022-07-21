@@ -1,7 +1,7 @@
 """CAKE Fitting Programme"""
 # if __name__ == '__main__':
-import matplotlib
-matplotlib.use('TkAgg')
+# import matplotlib
+# matplotlib.use('Agg')
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -208,10 +208,15 @@ def read_data(file_name, sheet_name):
 
     """
     try:
-        df = pd.read_excel(file_name, sheet_name=sheet_name, engine='openpyxl')
+        df = pd.read_excel(file_name, sheet_name=sheet_name, engine='openpyxl', header=None, dtype=np.float64)
         return df
-    except ValueError as e:
-        return str(e)
+    except ValueError:
+        pass
+    try:
+        df = pd.read_excel(file_name, sheet_name=sheet_name, engine='openpyxl', dtype=np.float64)
+        return df
+    except ValueError:
+        raise ValueError("Excel file must contain all numerical input with at most 1 header row.")
 
 
 def get_cat_add_rate(cat_sol_conc, inject_rate, react_vol_init):
