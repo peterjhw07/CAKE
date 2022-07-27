@@ -233,6 +233,7 @@ def get_cat_add_rate(cat_sol_conc, inject_rate, react_vol_init):
     """
     return (cat_sol_conc * inject_rate) / react_vol_init
 
+
 def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_lim, r_ord_lim, cat_ord_lim, t_del_lim,
              t_col, TIC_col, r_col, p_col, scale_avg_num=0, win=1, inc=1, fit_asp='r'):
     """
@@ -524,6 +525,7 @@ def make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_li
      'P_0': p0,
      'P_end': p_end,
      'Cat Add Rate': cat_add_rate,
+     'Cat Injection Time': t_inj,
      'Total Ion Count col': TIC_col,
      'R col': r_col,
      'P col': p_col,
