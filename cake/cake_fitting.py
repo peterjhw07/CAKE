@@ -540,28 +540,42 @@ def make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_li
      'Interpolation Multiplier': inc,
      'Fitting Aspect': fit_asp
      }
-    if len(k_lim) == 1:
+    if k_lim is None:
+        param_dict['k Estimate'], param_dict['k Minimum'], param_dict['k Maximum'] = None, None, None
+    elif len(k_lim) == 1:
         param_dict['k Estimate'] = k_lim[0]
         param_dict['k Minimum'] = k_lim[0] - (1E6 * k_lim[0])
         param_dict['k Maximum'] = k_lim[0] + (1E6 * k_lim[0])
     else:
         param_dict['k Estimate'], param_dict['k Minimum'], param_dict['k Maximum'] = k_lim
 
-    if len(r_ord_lim) == 1:
+    if r_ord_lim is None:
+        param_dict['R Order Estimate'] = 1
+        param_dict['R Order Minimum'] = 0
+        param_dict['R Order Maximum'] = 2
+    elif len(r_ord_lim) == 1:
         param_dict['R Order Estimate'] = r_ord_lim[0]
         param_dict['R Order Minimum'] = r_ord_lim[0] - 1E6
         param_dict['R Order Maximum'] = r_ord_lim[0] + 1E6
     else:
         param_dict['R Order Estimate'], param_dict['R Order Minimum'], param_dict['R Order Maximum'] = r_ord_lim
 
-    if len(r_ord_lim) == 1:
+    if cat_ord_lim is None:
+        param_dict['Cat Order Estimate'] = 1
+        param_dict['Cat Order Minimum'] = 0
+        param_dict['Cat Order Maximum'] = 2
+    elif len(cat_ord_lim) == 1:
         param_dict['Cat Order Estimate'] = cat_ord_lim[0]
         param_dict['Cat Order Minimum'] = cat_ord_lim[0] - 1E6
         param_dict['Cat Order Maximum'] = cat_ord_lim[0] + 1E6
     else:
         param_dict['Cat Order Estimate'], param_dict['Cat Order Minimum'], param_dict['Cat Order Maximum'] = cat_ord_lim
 
-    if len(t_del_lim) == 1:
+    if t_del_lim is None:
+        param_dict['Start Time Estimate'] = 0
+        param_dict['Start Time Minimum'] = 0
+        param_dict['Start Time Maximum'] = "End Rxn Time"
+    elif len(t_del_lim) == 1:
         param_dict['Start Time Estimate'] = t_del_lim[0]
         param_dict['Start Time Minimum'] = t_del_lim[0] - 1E6
         param_dict['Start Time Maximum'] = t_del_lim[0] + 1E6
