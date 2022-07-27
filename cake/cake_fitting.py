@@ -320,7 +320,6 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_lim, 
             p_scale = np.mean(p[-scale_avg_num:]) / p_end
             p = p / p_scale
 
-
     # define half lives for different fit aspects
     if fit_asp == 'r':
         x_data = t
