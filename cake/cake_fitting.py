@@ -302,18 +302,22 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_lim, 
     if r_col is not None:
         r = data_smooth(df, r_col, win)
         r = tic_norm(r, TIC)
-        if r0 is None and scale_avg_num > 0:
-            r0 = np.mean(r[:scale_avg_num])
-        elif scale_avg_num > 0:
-            r_scale = np.mean(r[:scale_avg_num]) / r0
+        if r0 is None and scale_avg_num == 0:
+            r0 = r[0]
+        elif r0 is None and scale_avg_num > 0:
+            r0 = np.mean(r[0:scale_avg_num])
+        elif r0 is not None and scale_avg_num > 0:
+            r_scale = np.mean(r[0:scale_avg_num]) / r0
             r = r / r_scale
     p = None
     if p_col is not None:
         p = data_smooth(df, p_col, win)
         p = tic_norm(p, TIC)
-        if p_end is None and scale_avg_num > 0:
+        if p_end is None and scale_avg_num == 0:
+            p_end = p[-1]
+        elif p_end is None and scale_avg_num > 0:
             p_end = np.mean(p[-scale_avg_num:])
-        elif scale_avg_num > 0:
+        elif p_end is not None and scale_avg_num > 0:
             p_scale = np.mean(p[-scale_avg_num:]) / p_end
             p = p / p_scale
 
@@ -377,7 +381,8 @@ def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_lim, 
         k_guess[:] = [[r_ord, cat_ord, 0, 0] for r_ord in test_r for cat_ord in test_cat]
         for it in range(0, len(k_guess)):
             if k_guess[it, 0] != 1:
-                k_guess[it, 2] = est_k_order(k_guess[it, 0], k_guess[it, 1], t_del_val, r0, cat_add_rate, t_inj, half_life)
+                k_guess[it, 2] = est_k_order(k_guess[it, 0], k_guess[it, 1], t_del_val, r0,
+                                             cat_add_rate, t_inj, half_life)
             else:
                 k_guess[it, 2] = est_k_first_order(k_guess[it, 1], t_del_val, cat_add_rate, t_inj, half_life)
             if fit_asp == 'r':
@@ -727,8 +732,8 @@ if __name__ == "__main__":
     html = plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', return_image=False,
                              save_disk=True, save_to=pic_save)
 
-    param_dict = make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_lim, r_ord_lim, cat_ord_lim, t_del_lim,
-                    t_col, TIC_col, r_col, p_col, scale_avg_num, win, inc, fit_asp)
+    param_dict = make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_lim, r_ord_lim, cat_ord_lim,
+                                 t_del_lim, t_col, TIC_col, r_col, p_col, scale_avg_num, win, inc, fit_asp)
 
     # write_fit_data(xlsx_save, df, param_dict, t, r, p, fit_p, fit_r, res_val, res_err, ss_res, r_squared, cat_pois)
     file, _ = write_fit_data_temp(df, param_dict, t, r, p, fit_p, fit_r, res_val, res_err, ss_res, r_squared, cat_pois,
