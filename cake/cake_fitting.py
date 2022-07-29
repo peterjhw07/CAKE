@@ -8,10 +8,6 @@ import pandas as pd
 import io
 import base64
 from scipy import optimize
-import logging
-
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
 
 
 # general kinetic simulator
