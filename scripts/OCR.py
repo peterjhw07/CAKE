@@ -360,7 +360,7 @@ def JS_data2(out_below_replace):
     out_below_replace = grad_3rd8to0adj(out_below_replace)
     out_below_replace = grad_4th8to0adj(out_below_replace)
     out_below_replace = grad_5th8to0adj(out_below_replace)
-    out_below_replace = grad_6th8to0adj(out_below_replace)
+    out_belowreplace = grad_6th8to0adj(out_below_replace)
     out_below_replace = grad_1st6to1adj(out_below_replace)
     out_below_replace = grad_2nd6to1adj(out_below_replace)
     out_below_replace = grad_3rd6to1adj(out_below_replace)
