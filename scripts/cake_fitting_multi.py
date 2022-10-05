@@ -16,7 +16,8 @@ log.setLevel(logging.DEBUG)
 
 
 # general kinetic simulator
-def eq_sim_gen(stoich, conc0, conc_end, add_rate, t_inj, inc, ord_lim, r_locs, p_locs, c_locs, fix_ord_locs, var_ord_locs, t_fit, k, ord, t_del):
+def eq_sim_gen(stoich, mol0, mol_end, add_pops, vol, inc, ord_lim, r_locs, p_locs, c_locs, fix_ord_locs, var_ord_locs,
+               var_pois_locs, t_fit, fit_param, fit_param_locs):
     """
     Function Description
 
@@ -28,49 +29,33 @@ def eq_sim_gen(stoich, conc0, conc_end, add_rate, t_inj, inc, ord_lim, r_locs, p
 
 
     """
-    spec_calc = np.zeros((len(t_fit), len(conc0)))
-    rate_calc = np.zeros(len(t_fit))
-    spec_calc[0] = conc0
-
-    r_c_locs = *r_locs, *c_locs
-    recon_ord = [None] * len(r_c_locs)
-    for it in range(len(r_c_locs)):
-        if r_c_locs[it] in fix_ord_locs:
-            recon_ord[it] = ord_lim[fix_ord_locs[fix_ord_locs.index(r_c_locs[it])]]
-        elif r_c_locs[it] in var_ord_locs:
-            recon_ord[it] = ord[var_ord_locs.index(r_c_locs[it])]
-
-    rate_calc[0] = k * np.prod([spec_calc[0, r_c_locs[i]] ** recon_ord[i] for i in range(len(r_c_locs))])
-    for it in range(1, len(t_fit)):
-        time_span = t_fit[it] - t_fit[it - 1]
-        t_start_adj = max(0, t_fit[it] - t_inj - t_del)
-        spec_calc[it, r_locs] = [max(0, spec_calc[it - 1, i] - (time_span * rate_calc[it - 1] * stoich[i]) + (t_start_adj * add_rate[i])) for i in r_locs]
-        spec_calc[it, p_locs] = [max(0, spec_calc[it - 1, i] + (time_span * rate_calc[it - 1] * stoich[i]) + (t_start_adj * add_rate[i])) for i in p_locs]
-        spec_calc[it, c_locs] = [(t_start_adj * add_rate[i]) for i in c_locs]
-        rate_calc[it] = k * np.prod([spec_calc[it, r_c_locs[i]] ** recon_ord[i] for i in range(len(r_c_locs))])
+    k = fit_param[fit_param_locs[0]]
+    ord = [fit_param[i] for i in fit_param_locs[1]]
+    pois = [fit_param[i] for i in fit_param_locs[2]]
+    pops = np.zeros((len(t_fit), len(mol0)))
+    rate = np.zeros(len(t_fit))
+    pops[0] = mol0
+    for i in range(len(var_pois_locs)):
+        pops[:, var_pois_locs[i]] -= pois[i]
+    i = 0
+    rate[i] = k * np.prod([(max(0, pops[i, j]) / vol[i]) ** ord_lim[j] for j in fix_ord_locs]) * np.prod([(max(0, pops[i, var_ord_locs[j]]) / vol[i]) ** ord[j] for j in range(len(var_ord_locs))])
+    for i in range(1, len(t_fit)):
+        t_span = t_fit[i] - t_fit[i - 1]
+        pops[i, r_locs] = [pops[i - 1, j] - (t_span * rate[i - 1] * stoich[j]) * vol[i - 1]
+                           + add_pops[i, j] for j in r_locs]
+        pops[i, p_locs] = [pops[i - 1, j] + (t_span * rate[i - 1] * stoich[j]) * vol[i - 1]
+                           + add_pops[i, j] for j in p_locs]
+        pops[i, c_locs] = [pops[i - 1, j] + add_pops[i, j] for j in c_locs]
+        rate[i] = k * np.prod([(max(0, pops[i, j]) / vol[i]) ** ord_lim[j] for j in fix_ord_locs]) * np.prod([(max(0, pops[i, var_ord_locs[j]]) / vol[i]) ** ord[j] for j in range(len(var_ord_locs))])
+    pops[pops < 0] = 0
+    pops[:] = [pops[i, :] / vol[i] for i in range(0, len(t_fit))]
     exp_t_rows = list(range(0, len(t_fit), inc - 1))
-    spec_calc, rate_calc = spec_calc[exp_t_rows], rate_calc[exp_t_rows]
-    return [spec_calc, rate_calc]
-
-
-def eq_sim_multi(stoich, conc0, conc_end, add_rate, t_inj, inc, ord_lim, r_locs, p_locs, c_locs, fix_ord_locs, var_ord_locs, t_fit, k, ord, t_del):
-    """
-    Function Description
-
-    Params
-    ------
-
-    Returns
-    -------
-
-
-    """
-    [spec_calc, rate_it] = eq_sim_gen(stoich, conc0, conc_end, add_rate, t_inj, inc, ord_lim, r_locs, p_locs, c_locs, fix_ord_locs, var_ord_locs, t_fit, k, ord, t_del)
-    return spec_calc
+    pops, rate = pops[exp_t_rows], rate[exp_t_rows]
+    return [pops, rate]
 
 
 # define additional t values for data sets with few data points
-def add_sim_t(t, inc):
+def add_sim(s, inc):
     """
     Function Description
 
@@ -82,65 +67,12 @@ def add_sim_t(t, inc):
 
 
     """
-    t_fit = np.zeros(((len(t) - 1) * (inc - 1)) + 1)
-    for it in range(len(t) - 1):
-        new_t_it = np.linspace(t[it], t[it + 1], inc)[0:-1]
-        t_fit[it * len(new_t_it):(it * len(new_t_it)) + len(new_t_it)] = new_t_it
-    t_fit[-1] = t[-1]
-    return t_fit
-
-
-# to estimate a k value
-def half_life_calc(y_data0, x_data, y_data):
-    """
-    Function Description
-
-    Params
-    ------
-
-    Returns
-    -------
-
-
-    """
-    half_y = 0.5 * y_data0
-    index = np.where(abs(y_data - half_y) == min(abs(y_data - half_y)))
-    print(index)
-    half_life = float(x_data[index])
-    return half_life
-
-
-def est_k_order(r_ord, cat_ord, t_del, r0, cat_add_rate, t_inj, half_life):
-    """
-    Function Description
-
-    Params
-    ------
-
-    Returns
-    -------
-
-
-    """
-    k_guess = (((2 ** (r_ord - 1)) - 1) * (r0 ** (1 - r_ord)) * (cat_ord + 1)) / (((half_life - t_inj - t_del)
-                                                        ** (cat_ord + 1)) * (cat_add_rate ** cat_ord) * (r_ord - 1))
-    return k_guess
-
-
-def est_k_first_order(cat_ord, t_del, cat_add_rate, t_inj, half_life):
-    """
-    Function Description
-
-    Params
-    ------
-
-    Returns
-    -------
-
-
-    """
-    k_guess = ((cat_ord + 1) * np.log(2)) / (((half_life - t_inj - t_del) ** (cat_ord + 1)) * (cat_add_rate ** cat_ord))
-    return k_guess
+    s_fit = np.zeros((((len(s) - 1) * (inc - 1)) + 1))
+    for i in range(len(s) - 1):
+        new_s_i = np.linspace(s[i], s[i + 1], num=inc)[:-1]
+        s_fit[i * len(new_s_i):(i * len(new_s_i)) + len(new_s_i)] = new_s_i
+    s_fit[-1] = s[-1]
+    return s_fit
 
 
 # smooth data (if required)
@@ -156,13 +88,12 @@ def data_smooth(df, d_col, win=1):
 
 
     """
-    d_raw = df.iloc[:, d_col].values
-    if win > 1:
-        d_ra = df.iloc[:, d_col].rolling(win).mean().values
-        d_manip = d_ra[np.logical_not(np.isnan(d_ra))]
+    if win <= 1:
+        d_ext = df.iloc[:, d_col].values
     else:
-        d_manip = d_raw
-    return d_manip
+        d_ra = df.iloc[:, d_col].rolling(win).mean().values
+        d_ext = d_ra[np.logical_not(np.isnan(d_ra))]
+    return d_ext
 
 
 # manipulate to TIC values (for MS only)
@@ -204,7 +135,7 @@ def residuals(y_data, fit):
     return [ss_res, r_squared]
 
 
-def read_data(file_name, sheet_name):
+def read_data(file_name, sheet_name, t_col, col):
     """
     Read in data from excel filename
 
@@ -216,36 +147,27 @@ def read_data(file_name, sheet_name):
 
 
     """
+    df = pd.read_excel(file_name, sheet_name=sheet_name, engine='openpyxl', dtype=str)
+    headers = list(pd.read_excel(file_name, sheet_name=sheet_name, engine='openpyxl').columns)
+    if isinstance(col, int): col = [col]
+    conv_col = [i for i in [t_col, *col] if i is not None]
     try:
-        df = pd.read_excel(file_name, sheet_name=sheet_name, engine='openpyxl', header=None, dtype=np.float64)
+        for i in conv_col:
+            df[headers[i]] = pd.to_numeric(df[headers[i]], downcast="float")
         return df
     except ValueError:
         pass
     try:
-        df = pd.read_excel(file_name, sheet_name=sheet_name, engine='openpyxl', dtype=np.float64)
+        for i in conv_col:
+            df[headers[i]] = pd.to_numeric(df[headers[i]], downcast="float")
         return df
     except ValueError:
-        raise ValueError("Excel file must contain all numerical input with at most 1 header row.")
+        raise ValueError("Excel file must contain data rows (i.e. col specified) of numerical input with at most 1 header row.")
 
 
-def type_sort(substrate):
+def find_nearest(array, value):
     """
-    Read in data from excel filename
-
-    Params
-    ------
-
-    Returns
-    -------
-
-
-    """
-
-
-
-def get_cat_add_rate(cat_sol_conc, inject_rate, react_vol_init):
-    """
-        Compute the approximate catalyst addition rate in units of concentration / time.
+        Find nearest element to value in array
 
         Params
         ------
@@ -255,229 +177,342 @@ def get_cat_add_rate(cat_sol_conc, inject_rate, react_vol_init):
 
 
     """
-    return [i * j for i, j in zip(cat_sol_conc, inject_rate)] / react_vol_init
+    array = np.asarray(array)
+    index = (np.abs(array - value)).argmin()
+    return index
 
-def fit_cake(df, spec_type, stoich, conc0, conc_end, add_rate, t_inj, k_lim, ord_lim, t_del_lim,
-             t_col, TIC_col, col, scale_avg_num=0, win=1, inc=1, fit_asp='y'):
+
+def return_all_nones(s, spec_type):
+    if s is None: s = [None] * len(spec_type)
+    return s
+
+
+def type_to_list(s):
+    if not isinstance(s, list):
+        s = [s]
+    return s
+
+
+def tuple_of_lists_from_tuple_of_int_float(s):
+    s_list = []
+    for i in range(len(s)):
+        if isinstance(s[i], (int, float)):
+            s_list = [*s_list, [s[i]]]
+        else:
+            s_list = [*s_list, s[i]]
+    return s_list
+
+def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, add_sol_conc=None, add_cont_rate=None,
+             t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None, t_col=0, col=1, k_lim=None, ord_lim=None,
+             pois_lim=None, fit_asp="y", TIC_col=None, scale_avg_num=0, win=1, inc=1):
     """
     Params
     ------
     df : pandas.DataFrame
         The reaction data
-    stoich_r : int
-        Stoichiometry of reactant, r
-    stoich_p : int
-        Stoichiometry of product, p
-    r0 : float
-        Value of r0 in M dm^-3 or None if data are given in M dm^-3
-    p0 : float
-        Value of p0 in M dm^-3 or None if data are given in M dm^-3
-    p_end : float
-        End value of product in M dm^-3, r0 if equal to start r0 value, or None if data are given in M dm^-3
-    cat_add_rate : float
-        Catalyst addition rate in M time_unit^-1
-    t_inj : float
-        Time at which injection began in time_unit^-1
-    k_lim : list of float
-        Estimated rate constant in (M dm^-3)^? time_unit^-1. Can be specified as [exact value] for fixed variable or
-        variable with bounds [estimate, factor difference] or [estimate, lower, upper]. If None, bounds set
-        automatically as [estimate from half life, estimate from half life * 1E-3, estimate from half life * 1E3]
-    r_ord_lim : list of int
-        Reactant order. Can be specified as [exact value] for fixed variable or
-        variable with bounds [estimate, lower, upper]. If None, bounds set automatically as [1, 0, 2]
-    cat_ord_lim : list of int
-        Catalyst order. Can be specified as [exact value] for fixed variable or
-        variable with bounds [estimate, lower, upper]. If None, bounds set automatically as [1, 0, 2]
-    t_del_lim : list of float
-        Time after t_inj when reaction began in time_unit^-1. Can be specified as [exact value] for fixed variable or
-        variable with bounds [estimate, lower, upper]. If None, bounds set automatically as [0, 0, final time point]
+    spec_type : str or list of str
+        Type of each species: "r" for reactant, "p" for product, "c" for catalyst
+    react_vol_init : float
+        Initial reaction solution volume in volume_unit
+    stoich : list of int or None
+        Stoichiometry of species, use "None" for catalyst. Default 1
+    mol0 : list of float or None
+        Initial moles of species in moles_unit or None if data do not need scaling
+    mol_end : list of float or None
+        Final moles of species in moles_unit or None if data do not need scaling
+    add_sol_conc : list of float or None, optional
+        Concentration of solution being added for each species in moles_unit volume_unit^-1.
+        Default None (no addition solution for all species)
+    add_cont_rate : list of tuple of float or None, optional
+        Continuous addition rates of species in moles_unit volume_unit^-1 time_unit^-1.
+        Default None (no continuous addition for all species)
+    t_cont : list of tuple of float or None, optional
+        Times at which continuous addition began for each species in time_unit^-1.
+        Default None (no continuous addition for all species)
+    add_one_shot : list of tuple of float or None, optional
+        One shot additions in volume_unit for each species. Default None (no one shot additions for all species)
+    t_one_shot : list of tuple of float or None, optional
+        Times at which one shot additions occurred in time_unit^-1 for each species.
+        Default None (no additions for all species)
+    add_col : list of int or None, optional
+        Index of addition column for each species, where addition column is in volume_unit.
+        If not None, overwrites add_cont_rate, t_cont, add_one_shot and t_one_shot for each species.
+        Default None (no add_col for all species)
     t_col : int
-        Index of time column.
-    TIC_col : int or str
-        Index of TIC column or None if no TIC
-    r_col : int or str
-        Index of reactant column or None if no reactant
-    p_col : int or str
-        Index of product column or None if no product
+        Index of time column. Default 0
+    col : list of int
+        Index of species column. Default 1
+    k_lim : float or tuple of float
+        Estimated rate constant in (moles_unit volume_unit)^(sum of orders^-1 + 1) time_unit^-1.
+        Can be specified as exact value for fixed variable or variable with bounds (estimate, factor difference) or
+        (estimate, lower, upper). Default bounds set as (automated estimate, estimate * 1E-3, estimate * 1E3)
+    ord_lim : float or list of tuple of float
+        Species reaction order. Can be specified as exact value for fixed variable or
+        variable with bounds (estimate, lower, upper) for each species. Default bounds set as (1, 0, 2) for "r" and "c" species and 0 for "p" species
+    pois_lim : float, str or tuple of float or str, optional
+        Moles of species poisoned in moles_unit. Can be specified as exact value for fixed variable,
+        variable with bounds (estimate, lower, upper), or "max" with bounds (0, 0, max species concentration).
+        Default assumes no poisoning occurs for all species
+    fit_asp : list of str, optional
+        Species to fit to: "y" to fit to species, "n" not to fit to species. Default "y"
+    TIC_col : int, optional
+        Index of TIC column or None if no TIC. Default None
     scale_avg_num : int, optional
-        Number of data points from which to calculate r0 and p_end. Default 0 (no scaling)
+        Number of data points from which to calculate mol0 and mol_end. Default 0 (no scaling)
     win : int, optional
         Smoothing window, default 1 if smoothing not required
     inc : int, optional
         Increments between adjacent points for improved simulation, default 1 for using raw time points
-    fit_asp : str
-        Aspect you want to fit to: 'r' for reactant, 'p' for product or 'rp' for both
     """
 
-    def eq_sim_multi_fit(t_sim, k, t_del, *ord):
-        t_fit = t_sim[:int(len(t_sim) / len(fit_asp_locs))]
-        spec_calc = eq_sim_multi(stoich, conc0, conc_end, add_rate, t_inj, inc, ord_lim, r_locs, p_locs, c_locs, fix_ord_locs,
-                     var_ord_locs, t_fit, k, ord, t_del)
-        total_calc = np.empty(0)
+    def eq_sim_fit(x_data_sim, *fit_param):
+        x_data_fit = x_data_sim[:int(len(x_data_sim) / len(fit_asp_locs))]
+        pops, rate = eq_sim_gen(stoich, mol0, mol_end, add_pops_add, vol_data_add, inc, ord_lim, r_locs, p_locs, c_locs,
+                                fix_ord_locs, var_ord_locs, var_pois_locs, x_data_fit, fit_param, fit_param_locs)
+        pops_reshape = np.empty(0)
         for i in fit_asp_locs:
-            total_calc = np.append(total_calc, spec_calc[:, i], axis=0)
-        return total_calc
+            pops_reshape = np.append(pops_reshape, pops[:, i], axis=0)
+        return pops_reshape
 
+    spec_type = type_to_list(spec_type)
     r_locs = [i for i in range(len(spec_type)) if 'r' in spec_type[i]]
     p_locs = [i for i in range(len(spec_type)) if 'p' in spec_type[i]]
     c_locs = [i for i in range(len(spec_type)) if 'c' in spec_type[i]]
-    fix_ord_locs = [i for i in range(len(ord_lim)) if isinstance(ord_lim[i], (int or float))]
-    var_ord_locs = [i for i in range(len(ord_lim)) if isinstance(ord_lim[i], tuple)]
-    fit_asp_locs = [i for i in range(len(fit_asp)) if 'y' in fit_asp[i]]
 
+    if stoich is None: stoich = [1] * len(spec_type)
+    mol0 = return_all_nones(mol0, spec_type)
+    mol_end = return_all_nones(mol_end, spec_type)
+    add_sol_conc = return_all_nones(add_sol_conc, spec_type)
+    add_cont_rate = return_all_nones(add_cont_rate, spec_type)
+    t_cont = return_all_nones(t_cont, spec_type)
+    add_one_shot = return_all_nones(add_one_shot, spec_type)
+    t_one_shot = return_all_nones(t_one_shot, spec_type)
+    add_col = return_all_nones(add_col, spec_type)
+    if ord_lim is None:
+        ord_lim = []
+        for i in spec_type:
+            if 'r' in i or 'c' in i:
+                ord_lim.append((1, 0, 2))
+            elif 'p' in i:
+                ord_lim.append(0)
+    elif p_locs:
+        for i in p_locs:
+            if ord_lim[i] is None: ord_lim[i] = 0
+    print(ord_lim)
+    if pois_lim is None: pois_lim = [0] * len(spec_type)
+
+    stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, t_col, col, \
+    ord_lim, pois_lim, fit_asp = map(type_to_list, [stoich, mol0, mol_end, add_sol_conc,
+    add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, t_col, col, ord_lim, pois_lim, fit_asp])
+    add_cont_rate, t_cont, add_one_shot, t_one_shot = map(tuple_of_lists_from_tuple_of_int_float,
+                                            [add_cont_rate, t_cont, add_one_shot, t_one_shot])
+    print(spec_type, react_vol_init, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot,
+          t_one_shot, add_col, t_col, col, k_lim, ord_lim, pois_lim, fit_asp, TIC_col, scale_avg_num, win, inc)
+
+    fix_ord_locs = [i for i in range(len(ord_lim)) if (isinstance(ord_lim[i], (int, float))
+                    or (isinstance(ord_lim[i], (tuple, list)) and len(ord_lim[i]) == 1))]
+    var_ord_locs = [i for i in range(len(ord_lim)) if (isinstance(ord_lim[i], (tuple, list)) and len(ord_lim[i]) > 1)]
+    fix_pois_locs = [i for i in range(len(pois_lim)) if (isinstance(pois_lim[i], (int, float))
+                    or (isinstance(pois_lim[i], (tuple, list)) and len(pois_lim[i]) == 1))]
+    var_pois_locs = [i for i in range(len(pois_lim)) if (isinstance(pois_lim[i], (tuple, list, str)) and len(pois_lim[i]) > 1)]
+    fit_asp_locs = [i for i in range(len(fit_asp)) if 'y' in fit_asp[i]]
+    fit_param_locs = [0, range(1, 1 + len(var_ord_locs)),
+                      range(1 + len(var_ord_locs), 1 + len(var_ord_locs) + len(var_pois_locs))]
     inc += 1
-    data_org = df.to_numpy().T
-    data_mod = data_org
-    t = data_smooth(df, t_col, win)
-    data_mod[t_col] = t
+
+    x_data = data_smooth(df, t_col, win)
+    data_org = df.to_numpy()
+    data_mod = np.empty((len(x_data), len(spec_type)))
+    add_pops = np.zeros((len(x_data), len(spec_type)))
+    vol = np.ones(len(x_data)) * react_vol_init
+
     TIC = None
     if TIC_col is not None:
         TIC = data_smooth(df, TIC_col, win)
-    data_it = None
     col_ext = []
-    for it in range(len(col)):
-        if col[it] is not None:
-            col_ext = [*col_ext, col[it]]
-            data_it = data_smooth(df, col[it], win)
-            data_it = tic_norm(data_it, TIC)
-            if conc0[it] is None and scale_avg_num == 0:
-                conc0_it = data_it[0]
-            elif conc0[it] is None and scale_avg_num > 0:
-                conc0_it = np.mean(data_it[0:scale_avg_num])
-            elif conc0[it] is not None and scale_avg_num > 0 and (conc_end[it] is None or conc0[it] >= conc_end[it]):
-                data_scale = np.mean(data_it[0:scale_avg_num]) / conc0[it]
-                data_it = data_it / data_scale
-            if conc_end[it] is None and scale_avg_num == 0:
-                conc_end_it = data_it[-1]
-            elif conc_end[it] is None and scale_avg_num > 0:
-                conc_end_it = np.mean(data_it[-scale_avg_num:])
-            elif conc_end[it] is not None and scale_avg_num > 0 and (conc0[it] is None or conc_end[it] >= conc0[it]):
-                data_scale = np.mean(data_it[-scale_avg_num:]) / conc_end[it]
-                data_it = data_it / data_scale
-            data_mod[col[it]] = data_it
+    for i in range(len(col)):
+        # previous version worked with "Overhaul" at 12:02 23/09/22
+        if add_col[i] is not None:
+            add_pops[:, i] = data_smooth(df, add_col[i], win)
+        else:
+            add_pops_i = np.zeros(len(data_org[:, t_col]))
+            if add_cont_rate[i] is not None and add_cont_rate[i] != 0:
+                for j in range(len(add_cont_rate[i])):
+                    index = find_nearest(data_org[:, t_col], t_cont[i][j])
+                    for k in range(index + 1, len(data_org[:, t_col])):
+                        add_pops_i[k] = add_pops_i[k - 1] + add_cont_rate[i][j] * \
+                                        (data_org[k, t_col] - data_org[k - 1, t_col])
+            if add_one_shot[i] is not None and add_one_shot[i] != 0:
+                for j in range(len(add_one_shot[i])):
+                    index = find_nearest(data_org[:, t_col], t_one_shot[i][j])
+                    add_pops_i[index:] += add_one_shot[i][j]
+            add_pops[:, i] = data_smooth(pd.DataFrame(add_pops_i), 0, win)
+    vol += add_pops.sum(axis=1)
+    for i in range(len(spec_type)):
+        if add_sol_conc[i] is not None: add_pops[:, i] = add_pops[:, i] * add_sol_conc[i]
 
-    # define half lives for different fit aspects
-    x_data_to_fit = np.empty(0)
+    for i in range(len(col)):
+        if col[i] is not None:
+            col_ext = [*col_ext, i]
+            data_i = data_smooth(df, col[i], win)
+            data_i = tic_norm(data_i, TIC)
+            if mol0[i] is None and scale_avg_num == 0:
+                mol0[i] = data_i[0] * vol[0]
+            elif mol0[i] is None and scale_avg_num > 0:
+                mol0[i] = np.mean([data_i[j] * vol[j] for j in range(scale_avg_num)])
+            elif mol0[i] is not None and mol0[i] != 0 and scale_avg_num > 0 and (
+                        mol_end[i] is None or mol0[i] >= mol_end[i]):
+                data_scale = np.mean([data_i[j] / (mol0[i] / vol[j]) for j in range(scale_avg_num)])
+                data_i = data_i / data_scale
+            if mol_end[i] is None and scale_avg_num == 0:
+                mol_end[i] = data_i[-1] * vol[-1]
+            elif mol_end[i] is None and scale_avg_num > 0:
+                mol_end[i] = np.mean([data_i[j] * vol[j] for j in range(-scale_avg_num, 0)])
+            elif mol_end[i] is not None and mol_end[i] != 0 and scale_avg_num > 0 and (
+                        mol0[i] is None or mol_end[i] >= mol0[i]):
+                data_scale = np.mean([data_i[j] / (mol_end[i] / vol[j]) for j in range(-scale_avg_num, 0)])
+                data_i = data_i / data_scale
+            data_mod[:, i] = data_i
+        if col[i] is None and mol0[i] is None:
+            mol0[i] = 0  # May cause issues
+        if col[i] is None and mol_end[i] is None:
+            mol_end[i] = 0  # May cause issues
+
+    # manipulate data for fitting
+    x_data_add = add_sim(np.reshape(x_data, (len(x_data))), inc)
+    add_pops_add = np.zeros((len(x_data_add), len(spec_type)))
+    for i in range(len(spec_type)):
+        add_pops_add[:, i] = add_sim(add_pops[:, i], inc)
+    add_pops_add_new = np.zeros((len(x_data_add), len(spec_type)))
+    for i in range(1, len(add_pops_add)):
+        add_pops_add_new[i] = add_pops_add[i] - add_pops_add[i - 1]
+    add_pops_add = add_pops_add_new
+    vol_data_add = add_sim(vol, inc)
+    x_data_add_to_fit = np.empty(0)
     y_data_to_fit = np.empty(0)
-    half_life_est = 0
-    #for it in range(len(col)):
-    #    x_data = np.append(x_data, t, axis=0)
-    #    y_data = np.append(y_data, data_mod[it], axis=0)
-    for it in range(len(fit_asp_locs)):
-        x_data_to_fit = np.append(x_data_to_fit, t, axis=0)
-        y_data_to_fit = np.append(y_data_to_fit, data_mod[col[fit_asp_locs[it]]], axis=0)
-        half_life_est += half_life_calc(max(conc0[fit_asp_locs[it]], conc_end[fit_asp_locs[it]]), t, data_mod[col[fit_asp_locs[it]]])
-    half_life = half_life_est / len(fit_asp_locs)
-    x_data_to_fit_add = add_sim_t(x_data_to_fit, inc)
+    for i in range(len(fit_asp_locs)):
+        x_data_add_to_fit = np.append(x_data_add_to_fit, x_data_add, axis=0)
+        y_data_to_fit = np.append(y_data_to_fit, data_mod[:, fit_asp_locs[i]], axis=0)
 
-    # define initial values and lower and upper limits for parameters to fit: k, r_ord, cat_ord and t_del
+    # define initial values and lower and upper limits for parameters to fit: k, ord and pois
     bound_adj = 1E-3
-    ord_val, ord_min, ord_max = [], [], []
-    for it in range(len(var_ord_locs)):
-        unpack_ord_lim = ord_lim[var_ord_locs[it]]
+    ord_val, ord_min, ord_max, pois_val, pois_min, pois_max = [], [], [], [], [], []
+    for i in range(len(var_ord_locs)):
+        unpack_ord_lim = ord_lim[var_ord_locs[i]]
         ord_val = [*ord_val, unpack_ord_lim[0]]
         ord_min = [*ord_min, unpack_ord_lim[1]]
         ord_max = [*ord_max, unpack_ord_lim[2]]
-    if t_del_lim is None:
-        t_del_val = 0
-        t_del_min = 0
-        t_del_max = t[-1]
-    elif len(t_del_lim) == 1:
-        t_del_val = t_del_lim[0]
-        t_del_min = max(0, t_del_val - bound_adj)
-        t_del_max = t_del_val + bound_adj
-    elif len(t_del_lim) > 1:
-        t_del_val = t_del_lim[0]
-        t_del_min = t_del_lim[1]
-        t_del_max = t_del_lim[2]
-    if k_lim is None or k_lim == 0:
-        test_ord = [list(range(round(ord_min[i]), round(ord_max[i]) + 1)) for i in range(len(var_ord_locs))]  # section currently not working
-        test_ord_combi = list(itertools.product(*test_ord))
-        print(test_ord_combi)
-        k_guess = np.zeros([len(test_ord_combi), len(var_ord_locs) + 2])
-        print([*test_ord_combi[0], 0, 0])
-        k_guess[:] = [[*test_ord_combi[i], 0, 0] for i in range(len(test_ord_combi))]
-        for it in range(len(k_guess)):
-            if k_guess[it, 0] != 1:
-                k_guess[it, 2] = est_k_order(k_guess[it, :-2], t_del_val, r0[0],
-                                             cat_add_rate, t_inj, half_life)  # changed r0[0]
-            else:
-                k_guess[it, 2] = est_k_first_order(k_guess[it, 1], t_del_val, cat_add_rate, t_inj, half_life)
-            if fit_asp == 'r':
-                fit_guess = eq_sim_r(x_data_to_fit_add, k_guess[it, 2], k_guess[it, 0], k_guess[it, 1], t_del_val)
-            elif fit_asp == 'p':
-                fit_guess = eq_sim_p(x_data_to_fit_add, k_guess[it, 2], k_guess[it, 0], k_guess[it, 1], t_del_val)
-            elif 'r' in fit_asp and 'p' in fit_asp:
-                fit_guess = eq_sim_multi_fit(x_data_to_fit_add, k_guess[it, 2], k_guess[it, 0], k_guess[it, 1], t_del_val)
-            _, k_guess[it, 3] = residuals(y_data_to_fit, fit_guess)
-        index = np.where(k_guess == max(k_guess[:, 3]))
-        index_first = index[0]
-        k_val = float(k_guess[index_first, 2])
-        k_min = k_val / 1E3
-        k_max = k_val * 1E3
-    elif len(k_lim) == 1:
-        k_val = k_lim[0]
+    for i in range(len(var_pois_locs)):
+        unpack_pois_lim = pois_lim[var_pois_locs[i]]
+        if "max" in unpack_pois_lim:
+            pois_val = [*pois_val, 0]
+            pois_min = [*pois_min, 0]
+            pois_max = [*pois_max, max(mol0[i], mol_end[i])]
+        else:
+            pois_val = [*pois_val, unpack_pois_lim[0]]
+            pois_min = [*pois_min, unpack_pois_lim[1]]
+            pois_max = [*pois_max, unpack_pois_lim[2]]
+    for i in fix_pois_locs:
+        mol0[i] -= pois_lim[i]
+        mol_end[i] -= pois_lim[i]
+
+    if k_lim is None or (isinstance(k_lim, (int, float)) and k_lim == 0) or \
+            (isinstance(k_lim, (tuple, list)) and len(k_lim) == 1 and (k_lim[0] is None or k_lim[0] == 0)):  # need to find a better way to estimate k
+        k_first_guess = np.zeros([len(range(-13, 13)), 2])
+        k_first_guess[:] = [[10 ** i, 0] for i in range(-13, 13)]
+        for i in range(len(k_first_guess)):
+            fit_guess = eq_sim_fit(x_data_add_to_fit, k_first_guess[i, 0], *ord_val, *pois_val)
+            _, k_first_guess[i, -1] = residuals(y_data_to_fit, fit_guess)
+        index = np.where(k_first_guess[:, -1] == max(k_first_guess[:, -1]))
+        k_first_guess = float(k_first_guess[index[0], 0])
+
+        k_sec_guess_switch = "n"
+        if "y" in k_sec_guess_switch:
+            test_ord_pre = [list(range(round(ord_min[i]), round(ord_max[i]) + 1)) for i in range(len(var_ord_locs))]
+            test_ord = list(itertools.product(*test_ord_pre))
+            k_sec_guess = np.zeros([len(test_ord), len(var_ord_locs) + len(var_pois_locs) + 2])
+            k_sec_guess[:] = [[*test_ord[i], 0, *np.zeros(len(var_pois_locs)), 0] for i in range(len(test_ord))]
+            for i in range(len(k_sec_guess)):
+                k_sec_guess_res = optimize.curve_fit(lambda x_data, k, *pois: eq_sim_fit(x_data, k,
+                                    *k_sec_guess[i, :len(var_ord_locs)], *pois), x_data_add_to_fit, y_data_to_fit,
+                                    [k_first_guess, *pois_val], maxfev=10000, bounds=((k_first_guess *
+                                    bound_adj, *pois_min), (k_first_guess / bound_adj, *pois_max)))
+                k_sec_guess[i, len(var_ord_locs):-1] = k_sec_guess_res[0]
+                fit_guess = eq_sim_fit(x_data_add_to_fit, k_sec_guess[i, len(var_ord_locs)],
+                                       *k_sec_guess[i, :len(var_ord_locs)],
+                                       *k_sec_guess[i, len(var_ord_locs) + 1:-len(var_pois_locs) - 1])
+                _, k_sec_guess[i, -1] = residuals(y_data_to_fit, fit_guess)
+            index = np.where(k_sec_guess[:, -1] == max(k_sec_guess[:, -1]))
+            k_val = float(k_sec_guess[index[0], -3])
+        else:
+            k_val = k_first_guess
+        k_min = k_val * bound_adj
+        k_max = k_val / bound_adj
+        k_lim = [k_val, k_min, k_max]
+    elif isinstance(k_lim, (int, float)) or (isinstance(k_lim, (tuple, list)) and len(k_lim) == 1):
+        if isinstance(k_lim, (int, float)): k_val = k_lim
+        else: k_val = k_lim[0]
         k_min = k_val - (bound_adj * k_val)
         k_max = k_val + (bound_adj * k_val)
     elif len(k_lim) == 2:
         k_val = k_lim[0]
-        k_min = k_val / k_lim[1]
-        k_max = k_val * k_lim[1]
+        k_min = k_val * k_lim[1]
+        k_max = k_val / k_lim[1]
     elif len(k_lim) == 3:
         k_val = k_lim[0]
         k_min = k_lim[1]
         k_max = k_lim[2]
 
-    init_param = [k_val, t_del_val, *ord_val]
+    init_param = [k_val, *ord_val, *pois_val]
+    low_bounds = [k_min, *ord_min, *pois_min]
+    up_bounds = [k_max, *ord_max, *pois_max]
 
     # apply fittings, determine optimal parameters and determine resulting fits
-    fit, fit_p, fit_r, cat_pois = None, None, None, None
-    res = optimize.curve_fit(eq_sim_multi_fit, x_data_to_fit_add, y_data_to_fit, init_param, maxfev=10000,
-                             bounds=((k_min, t_del_min, *ord_min), (k_max, t_del_max, *ord_max)))
-    kf, t_delf, *ordf = res[0]
-    print(res[0])
-    fit = eq_sim_multi_fit(x_data_to_fit_add, kf, t_delf, *ordf)
-    fit_data_outcome = eq_sim_multi(stoich, conc0, conc_end, add_rate, t_inj, inc, ord_lim, r_locs, p_locs, c_locs, fix_ord_locs, var_ord_locs, t, kf, ordf, t_delf)
-    # fit_r = fit[:int(len(x_data) / 2)]
-    # fit_p = fit[int(len(x_data) / 2):]
-    # fit_rate = eq_sim_gen(stoich, conc0, conc_end, cat_add_rate, t_inj, inc, x_data_add, kf, ordf, t_delf)[-1]
+    fit_param_res = optimize.curve_fit(eq_sim_fit, x_data_add_to_fit, y_data_to_fit, init_param, maxfev=10000,
+                                       bounds=(low_bounds, up_bounds))
+    fit_param = fit_param_res[0]
+    k_fit = fit_param[fit_param_locs[0]]
+    ord_fit = fit_param[fit_param_locs[1]]
+    pois_fit = fit_param[fit_param_locs[2]]
+    #print(k_fit, *ord_fit, *pois_fit)
+    fit_pops_set = eq_sim_fit(x_data_add_to_fit, k_fit, *ord_fit, *pois_fit)
+    fit_pops_all, fit_rate_all = eq_sim_gen(stoich, mol0, mol_end, add_pops_add, vol_data_add, inc, ord_lim,
+                                            r_locs, p_locs, c_locs, fix_ord_locs, var_ord_locs, var_pois_locs,
+                                            x_data_add, fit_param, fit_param_locs)
 
     # calculate residuals and errors
-    res_val = res[0]
-    res_err = np.sqrt(np.diag(res[1]))  # for 1SD
-    ss_res, r_squared = residuals(y_data_to_fit, fit)
+    fit_param_err = np.sqrt(np.diag(fit_param_res[1]))  # for 1SD
+    k_fit_err = fit_param_err[fit_param_locs[0]]
+    ord_fit_err = fit_param_err[fit_param_locs[1]]
+    pois_fit_err = fit_param_err[fit_param_locs[2]]
+    fit_param_ss, fit_param_r_squared = residuals(y_data_to_fit, fit_pops_set)
 
-    # calculate catalyst poisoning, if any
-    if t_del_lim is None or len(t_del_lim) > 1:
-        cat_pois = t_delf * add_rate
-        cat_pois_err = res_err[3] * add_rate
+    # "N/A" to non-fitted parameters
+    if k_lim is not None and k_lim != 0 and isinstance(k_lim, (int, float) or len(k_lim) == 1):
+        k_fit, k_fit_err = "N/A", "N/A"
+    if len(var_ord_locs) == 0:
+        ord_fit, ord_fit_err = "N/A", "N/A"
+    if len(var_pois_locs) == 0:
+        pois_fit, pois_fit_err = "N/A", "N/A"
+        t_del_fit, t_del_fit_err = "N/A", "N/A"
     else:
-        cat_pois = 0
-        cat_pois_err = 0
+        pois_fit, pois_fit_err = pois_fit / vol[0], pois_fit_err / vol[0]
+        t_del_fit, t_del_fit_err = pois_fit * 1, pois_fit_err * 1  # need to make t_del work somehow
 
-    if ord_lim is not None and len(ord_lim) == 1:
-        res_val[2:], res_err[2:] = [ord_val, 0]
-    if t_del_lim is not None and len(t_del_lim) == 1:
-        res_val[1], res_err[1] = [t_del_val, 0]
-    if k_lim is not None and len(k_lim) == 1:
-        res_val[0], res_err[0] = [k_val, 0]
-
-    return np.reshape(t, (len(t), 1)), data_mod[col_ext].T, fit_data_outcome, k_val, res_val, res_err, ss_res, r_squared, cat_pois, cat_pois_err
+    return np.reshape(x_data, (len(x_data), 1)), data_mod[:, col_ext], fit_pops_all, \
+           np.reshape(fit_rate_all, (len(fit_rate_all), 1)), k_val, k_fit, k_fit_err, \
+           ord_fit, ord_fit_err, pois_fit, pois_fit_err, fit_param_ss, fit_param_r_squared, col
 
 
-def write_fit_data(filename, df, param_dict, t, r, p, fit_p, fit_r, res_val, res_err, ss_res, r_squared, cat_pois,
-                   cat_pois_err):
+def write_fit_data(filename, df, param_dict, x_data, y_data, fit,
+                   k_fit, k_fit_err, ord_fit, ord_fit_err, pois_fit, pois_fit_err, ss_res, r_squared):
     param_dict = {key: np.array([value]) for (key, value) in param_dict.items()}
-    out_dict = {"Rate Constant": [res_val[0]],
-                  "Reactant Order": [res_val[1]],
-                  "Catalyst Order": [res_val[2]],
-                  "Zero Time": [res_val[3]],
-                  "Catalyst Poisoning": [cat_pois],
-                  "Rate Constant Error": [res_err[0]],
-                  "Reactant Order Error": [res_err[1]],
-                  "Catalyst Order Error": [res_err[2]],
-                  "Zero Time Error": [res_err[3]],
-                  "Catalyst Poisoning Error": [cat_pois_err],
+    out_dict = {"Rate Constant": [k_fit],
+                  "Reaction Orders": [ord_fit],
+                  "Species Poisoning": [pois_fit],
+                  "Rate Constant Error": [k_fit_err],
+                  "Reaction Order Errors": [ord_fit_err],
+                  "Species Poisoning Errors": [pois_fit_err],
                   "RSS": [ss_res],
                   "R2": [r_squared]}
     df_outputs = pd.DataFrame.from_dict(out_dict)
@@ -500,124 +535,126 @@ def write_fit_data(filename, df, param_dict, t, r, p, fit_p, fit_r, res_val, res
     writer.save()
 
 
-def write_fit_data_temp(df, param_dict, t, r, p, fit_p, fit_r, res_val, res_err, ss_res, r_squared, cat_pois,
-                        cat_pois_err):
+def write_fit_data_temp(df, param_dict, x_data, y_data, fit,
+                   k_fit, k_fit_err, ord_fit, ord_fit_err, pois_fit, pois_fit_err, ss_res, r_squared):
     tmp_file = io.BytesIO()
-    write_fit_data(tmp_file, df, param_dict, t, r, p, fit_p, fit_r, res_val, res_err, ss_res, r_squared, cat_pois,
-                   cat_pois_err)
+    write_fit_data(tmp_file, df, param_dict, x_data, y_data, fit,
+                   k_fit, k_fit_err, ord_fit, ord_fit_err, pois_fit, pois_fit_err, ss_res, r_squared)
 
     return tmp_file, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 
-def make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_lim, r_ord_lim, cat_ord_lim,
-                    t_del_lim, t_col, TIC_col, r_col, p_col, scale_avg_num, win, inc, fit_asp):
-    param_dict = {'Stoich R': stoich_r,
-     'Stoich P': stoich_p,
-     'R_0': r0,
-     'P_0': p0,
-     'P_end': p_end,
-     'Cat Add Rate': cat_add_rate,
-     'Total Ion Count col': TIC_col,
-     'R col': r_col,
-     'P col': p_col,
-     'Time col': t_col,
-     'Concentration Calibration Points': scale_avg_num,
-     'Smoothing Window': win,
-     'Interpolation Multiplier': inc,
-     'Fitting Aspect': fit_asp
+def make_param_dict(spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, add_sol_conc=None, add_cont_rate=None,
+                    t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None, t_col=0, col=1, k_lim=None,
+                    ord_lim=None, pois_lim=None, fit_asp="y", TIC_col=None, scale_avg_num=0, win=1, inc=1):
+    param_dict = {'Species types': spec_type,
+                  'Initial reaction solution volume': react_vol_init,
+                  'Stoichiometries': stoich,
+                  'Initial moles': mol0,
+                  'Final moles': mol_end,
+                  'Addition solution concentrations': add_sol_conc,
+                  'Continuous addition rates': add_cont_rate,
+                  'Continuous addition start times': t_cont,
+                  'One shot additions': add_one_shot,
+                  'One shot addition start times': t_one_shot,
+                  'Addition columns': add_col,
+                  'Time column': t_col,
+                  'Species columns': col,
+                  'Species to fit': fit_asp,
+                  'Total ion count column': TIC_col,
+                  'Concentration calibration points': scale_avg_num,
+                  'Smoothing window': win,
+                  'Interpolation multiplier': inc
      }
     if len(k_lim) == 1:
-        param_dict['k Estimate'] = k_lim[0]
-        param_dict['k Minimum'] = k_lim[0] - (1E6 * k_lim[0])
-        param_dict['k Maximum'] = k_lim[0] + (1E6 * k_lim[0])
+        param_dict['Rate constant starting estimate'] = k_lim[0]
+        param_dict['Rate constant minimum'] = k_lim[0] - (1E3 * k_lim[0])
+        param_dict['Rate constant maximum'] = k_lim[0] + (1E3 * k_lim[0])
     else:
-        param_dict['k Estimate'], param_dict['k Minimum'], param_dict['k Maximum'] = k_lim
+        param_dict['Rate constant starting estimate'], param_dict['Rate constant minimum'], \
+        param_dict['Rate constant maximum'] = k_lim
 
-    if len(r_ord_lim) == 1:
-        param_dict['R Order Estimate'] = r_ord_lim[0]
-        param_dict['R Order Minimum'] = r_ord_lim[0] - 1E6
-        param_dict['R Order Maximum'] = r_ord_lim[0] + 1E6
+    if len(ord_lim) == 1:
+        param_dict['Reaction order starting estimates'] = ord_lim[0]
+        param_dict['Reaction order minima'] = r_ord_lim[0] - 1E6
+        param_dict['Reaction order maxima'] = r_ord_lim[0] + 1E6
     else:
-        param_dict['R Order Estimate'], param_dict['R Order Minimum'], param_dict['R Order Maximum'] = r_ord_lim
+        param_dict['Reaction order starting estimates'], param_dict['Reaction order minima'], \
+        param_dict['Reaction order maxima'] = ord_lim
 
-    if len(r_ord_lim) == 1:
-        param_dict['Cat Order Estimate'] = cat_ord_lim[0]
-        param_dict['Cat Order Minimum'] = cat_ord_lim[0] - 1E6
-        param_dict['Cat Order Maximum'] = cat_ord_lim[0] + 1E6
+    if len(pois_lim) == 1:
+        param_dict['Poisoning starting estimates'] = pois_lim[0]
+        param_dict['Poisoning starting minima'] = pois_lim[0] - 1E6
+        param_dict['Poisoning starting maxima'] = pois_lim[0] + 1E6
     else:
-        param_dict['Cat Order Estimate'], param_dict['Cat Order Minimum'], param_dict['Cat Order Maximum'] = cat_ord_lim
-
-    if len(t_del_lim) == 1:
-        param_dict['Start Time Estimate'] = t_del_lim[0]
-        param_dict['Start Time Minimum'] = t_del_lim[0] - 1E6
-        param_dict['Start Time Maximum'] = t_del_lim[0] + 1E6
-    else:
-        param_dict['Start Time Estimate'], param_dict['Start Time Minimum'], param_dict['Start Time Maximum'] = t_del_lim
+        param_dict['Poisoning starting estimates'], param_dict['Poisoning starting minima'], \
+        param_dict['Poisoning starting maxima'] = pois_lim
 
     return param_dict
 
 
-def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', return_image=False, save_disk=False,
-                      save_to='cake.svg', return_fig=False):
+def plot_cake_results(x_data, y_data, fit, col, exp_headers, f_format='svg', return_image=False, save_disk=False,
+                      save_to='cake.svg', return_fig=False, transparent=False):
+
+    data_fit_col = [i for i in range(len(col)) if col[i] is not None]
+    non_data_fit_col = [i for i in range(len(col)) if col[i] is None]
+    data_headers = [exp_headers[i] for i in range(1, len(data_fit_col) + 1)]
+    fit_headers = [exp_headers[i] for i in range(len(data_fit_col) + 1, len(exp_headers) - 1)]
     # graph results
     x_ax_scale = 1
     y_ax_scale = 1
     edge_adj = 0.02
-    x_label_text = "Time"
-    y_label_text = ""
-    if r_col is not None and p_col is not None:
+    x_label_text = "Time / time_unit"
+    y_label_text = "Concentration / moles_unit volume_unit$^{-1}$"
+    std_colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    cur_clr = 0
+    if len(data_headers) == len(fit_headers):
+        fig = plt.figure(figsize=(5, 5))
+        #plt.rcParams.update({'font.size': 15})
+        plt.xlabel(x_label_text)
+        plt.ylabel(y_label_text)
+        for i in range(len(data_headers)):
+            if len(x_data) <= 50:
+                plt.scatter(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, label=data_headers[i])
+            else:
+                plt.plot(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, label=data_headers[i])
+        for i in range(len(fit_headers)):
+            plt.plot(x_data, fit[:, i] * y_ax_scale, label=fit_headers[i])
+        plt.xlim([min(x_data * x_ax_scale) - (edge_adj * max(x_data * x_ax_scale)), max(x_data * x_ax_scale) * (1 + edge_adj)])
+        plt.ylim([(min(np.min(y_data), np.min(fit)) - edge_adj * max(np.max(y_data), np.max(fit)) * x_ax_scale), max(np.max(y_data), np.max(fit)) * x_ax_scale * (1 + edge_adj)])
+        plt.legend(prop={'size': 10}, frameon=False)
+    else:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
-    if r_col is not None:
-        if p_col is None:
-            fig = plt.figure(figsize=(6, 6))
-            plt.rcParams.update({'font.size': 15})
-            if len(t) <= 50:
-                plt.scatter(t * x_ax_scale, r * y_ax_scale, color='k')  # plt.plot(t, r * 1E6, color='k')
+        #plt.rcParams.update({'font.size': 15})
+        ax1.set_xlabel(x_label_text)
+        ax1.set_ylabel(y_label_text)
+        ax2.set_xlabel(x_label_text)
+        ax2.set_ylabel(y_label_text)
+        for i in range(len(data_headers)):
+            if len(x_data) <= 50:
+                line, = ax1.scatter(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, color=std_colours[cur_clr], label=data_headers[i])
+                ax2.scatter(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, color=std_colours[cur_clr], label=data_headers[i])
+                cur_clr += 1
             else:
-                plt.plot(t * x_ax_scale, r * y_ax_scale, color='k')  # plt.plot(t, r * 1E6, color='k')
-            plt.plot(t, fit * y_ax_scale, color='r')
-            # plt.title("Raw")
-            plt.xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
-            plt.ylim([min(t * y_ax_scale) - (edge_adj * max(r * y_ax_scale)), max(r * y_ax_scale) * (1 + edge_adj)])
-            plt.xlabel(x_label_text)
-            plt.ylabel("[R]")
-            # plt.savefig(pic_save)
-            # plt.show()
-        else:
-            if len(t) <= 50:
-                ax1.scatter(t*x_ax_scale, r * y_ax_scale, color='k')
-            else:
-                ax1.plot(t * x_ax_scale, r * y_ax_scale, color='k')
-            ax1.plot(t * x_ax_scale, fit_r * y_ax_scale, color='r')
-            ax1.set_xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
-            # ax1.set_ylim([min(r * x_ax_scale) - (edge_adj * max(r * x_ax_scale)), max(r * x_ax_scale) * (1 + edge_adj)])
-            ax1.set_xlabel(x_label_text)
-            ax1.set_ylabel("[R]")
-    if p_col is not None:
-        if r_col is None:
-            fig = plt.figure(figsize=(6, 6))
-            plt.rcParams.update({'font.size': 15})
-            if len(t) <= 50:
-                plt.scatter(t * x_ax_scale, p * y_ax_scale, color='k')
-            else:
-                plt.plot(t * x_ax_scale, p * y_ax_scale, color='k')
-            plt.plot(t * x_ax_scale, fit * y_ax_scale, color='r')
-            plt.xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
-            plt.ylim([min(t * y_ax_scale) - (edge_adj * max(p * y_ax_scale)), max(p * y_ax_scale) * (1 + edge_adj)])
-            plt.xlabel(x_label_text)
-            plt.ylabel("[P]")
-        else:
-            if len(t) <= 50:
-                ax2.scatter(t * x_ax_scale, p * y_ax_scale, color='k')
-            else:
-                ax2.plot(t * x_ax_scale, p * y_ax_scale, color='k')
-            print(len(t))
-            print(len(fit_p))
-            ax2.plot(t * x_ax_scale, fit_p * y_ax_scale, color='r')
-            ax2.set_xlim([min(t * x_ax_scale) - (edge_adj * max(t * x_ax_scale)), max(t * x_ax_scale) * (1 + edge_adj)])
-            ax2.set_ylim([min(p * x_ax_scale) - (edge_adj * max(p * x_ax_scale)), max(p * x_ax_scale) * (1 + edge_adj)])
-            ax2.set_xlabel(x_label_text)
-            ax2.set_ylabel("[P]")
+                line, = ax1.plot(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, color=std_colours[cur_clr], label=data_headers[i])
+                ax2.plot(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, color=std_colours[cur_clr], label=data_headers[i])
+                cur_clr += 1
+        for i in data_fit_col:
+            line, = ax1.plot(x_data * x_ax_scale, fit[:, i] * y_ax_scale, color=std_colours[cur_clr], label=fit_headers[i])
+            ax2.plot(x_data * x_ax_scale, fit[:, i] * y_ax_scale, color=std_colours[cur_clr], label=fit_headers[i])
+            cur_clr += 1
+        for i in non_data_fit_col:
+            ax2.plot(x_data * x_ax_scale, fit[:, i] * y_ax_scale, color=std_colours[cur_clr], label=fit_headers[i])
+            cur_clr += 1
+
+        ax1.set_xlim([(min(x_data) - edge_adj * max(x_data) * x_ax_scale), max(x_data) * x_ax_scale * (1 + edge_adj)])
+        ax1.set_ylim([(min(np.min(y_data), np.min(fit[:, data_fit_col])) - edge_adj * max(np.max(y_data), np.max(fit[:, data_fit_col])) * x_ax_scale), max(np.max(y_data), np.max(fit[:, data_fit_col])) * x_ax_scale * (1 + edge_adj)])
+        ax2.set_xlim([(min(x_data) - edge_adj * max(x_data) * x_ax_scale), max(x_data) * x_ax_scale * (1 + edge_adj)])
+        ax2.set_ylim([(min(np.min(y_data), np.min(fit)) - edge_adj * max(np.max(y_data), np.max(fit)) * x_ax_scale), max(np.max(y_data), np.max(fit)) * x_ax_scale * (1 + edge_adj)])
+        ax1.legend(prop={'size': 10}, frameon=False)
+        ax2.legend(prop={'size': 10}, frameon=False)
+
+    #plt.show()
 
     if return_fig:
         return fig, fig.get_axes()
@@ -638,11 +675,11 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
 
     # save to disk if desired
     if save_disk:
-        plt.savefig(save_to, transparent=True)
+        plt.savefig(save_to, transparent=transparent)
 
     # save the figure to the temporary file-like object
     img = io.BytesIO()  # file-like object to hold image
-    plt.savefig(img, format=f_format, transparent=True)
+    plt.savefig(img, format=f_format, transparent=transparent)
     plt.close()
     img.seek(0)
     if not return_image:
@@ -652,80 +689,69 @@ def plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', 
         return img, mimetype
 
 
-def pprint_cake(res_val, res_err, ss_res, r_squared, cat_pois, cat_pois_err):
-    if cat_pois is None:
-        cat_pois = "N/A"
-    else:
-        cat_pois = f"{cat_pois: 8.6E}"
-    result = f"""|               | Rate Constant (k) | Reactant Order |
+def pprint_cake(k_fit, k_fit_err, ord_fit, ord_fit_err, pois_fit, pois_fit_err, ss_res, r_squared):
+    result = f"""|               | Rate Constant (k) | Reaction Orders |
 |---------------|-------------------|----------------|
-|  Opt. Values  | {res_val[0]: 17.6E} | {res_val[1]: 14.6f} |
-| Est. Error +- | {res_err[0]: 17.6E} | {res_err[1]: 14.6f} |
+|  Opt. Values  | {k_fit: 17.6E} | {ord_fit[1]: 14.6f} |
+| Est. Error +- | {k_fit_err: 17.6E} | {ord_fit_err: 14.6f} |
 
-|               | Catalyst Order | Start Time |
-|---------------|----------------|------------|
-|  Opt. Values  | {res_val[2]: 14.6f} | {res_val[3]: 10.6f} |
-| Est. Error +- | {res_err[2]: 14.6f} | {res_err[3]: 10.6f} |
+|               | Species Poisoning
+|---------------|----------------|
+|  Opt. Values  | {pois_fit: 14.6f} |
+| Est. Error +- | {pois_fit_err: 14.6f} |
 
 Residual Sum of Squares for Optimization: {ss_res: 8.6f}.
 
 R^2 Value of Fit: {r_squared: 8.6f}.
-
-Catalyst Poisoning (if applicable): {cat_pois}
-Catalyst Poisoning Error: {cat_pois_err}
 """
 
     return result
 
 
 if __name__ == "__main__":
-    stoich_r = 1  # insert stoichiometry of reactant, r
-    stoich_p = 1  # insert stoichiometry of product, p
-    r0 = 2.5  # enter value of r0 in M dm^-3 or None if data are given in M dm^-3
-    p0 = 0  # enter value of p0 in M dm^-3 or None if data are given in M dm^-3
-    p_end = r0  # enter end value of product in M dm^-3, r0 if equal to start r0 value, or None if data are given in M dm^-3
-    cat_add_rate = .000102  # enter catalyst addition rate in M time_unit^-1
-    t_inj = 60
-    win = 1  # enter smoothing window (1 if smoothing not required)
-
-    # Parameter fitting
-    # Enter None for any order, [exact value] for fixed variable or variable with bounds [estimate, factor difference] or [estimate, lower, upper]
-    inc = 1  # enter increments between adjacent points for improved simulation, None or 1 for using raw time points
-    k_lim = [1E-1, 1E-4, 1E2]  # enter rate constant in (M dm^-3)^? time_unit^-1
-    r_ord_lim = [1, 0, 3]  # enter r order
-    cat_ord_lim = [1, 0, 3]  # enter cat order
-    t_del_lim = [0, 0, 300]  # enter time at which injection began in time_unit^-1
-
-    # Experimental data location
-    file_name = r'/Users/bhenders/Desktop/CAKE/WM_220317_Light_Intensity.xlsx'  # enter filename as r'file_name'
-    file_name = r'/Users/bhenders/Downloads/PJHW_22040802.xlsx'  # enter filename as r'file_name'
-
-    sheet_name = 'Sheet2'  # enter sheet name as 'sheet_name'
-    t_col = 0  # enter time column
-    TIC_col = None  # enter TIC column or None if no TIC
-    r_col = None  # enter [r] column or None if no r
-    p_col = 1  # enter [p] column or None if no p
-    scale_avg_num = 5  # enter number of data points from which to calculate r0 and p_end
-
-    fit_asp = 'p'  # enter aspect you want to fit to: 'r' for reactant, 'p' for product or 'rp' for both
-
+    spec_type = ["r", "r", "p", "c"]
+    react_vol_init = 0.1
+    stoich = [1, 1, 1, None]  # insert stoichiometry of reactant, r
+    mol0 = [0.1, 0.2, 0, 0]
+    mol_end = [0, 0.1, 0.1, None]
+    add_sol_conc = [None, None, None, 10]
+    add_cont_rate = [None, None, None, 0.001]
+    t_cont = [None, None, None, 1]
+    t_col = 0
+    col = [1, 2, 3, None]
+    ord_lim = [(1, 0, 2), 1, 0, (1, 0, 2)]
+    fit_asp = ["y", "n", "y", None]
+    file_name = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Case studies\CAKE preliminary trials.xlsx'
+    sheet_name = r'Test_data'
     pic_save = r'/Users/bhenders/Desktop/CAKE/cake_app_test.png'
     xlsx_save = r'/Users/bhenders/Desktop/CAKE/fit_data.xlsx'
 
     df = read_data(file_name, sheet_name)
-    CAKE = fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_lim, r_ord_lim, cat_ord_lim,
-                    t_del_lim, t_col, TIC_col, r_col, p_col, scale_avg_num, win, inc, fit_asp)
-    t, r, p, fit, fit_p, fit_r, k_val, res_val, res_err, ss_res, r_squared, cat_pois, cat_pois_err = CAKE
+    output = fit_cake(df, spec_type, react_vol_init, stoich=stoich, mol0=mol0, mol_end=mol_end,
+                        add_sol_conc=add_sol_conc, add_cont_rate=add_cont_rate, t_cont=t_cont,
+                        t_col=t_col, col=col, ord_lim=ord_lim, fit_asp=fit_asp)
+    x_data, y_data, fit, fit_rate, k_val_est, k_fit, k_fit_err, ord_fit, ord_fit_err, pois_fit, pois_fit_err, ss_res, r_squared, col = CAKE
 
-    html = plot_cake_results(t, r, p, fit, fit_p, fit_r, r_col, p_col, f_format='svg', return_image=False,
-                             save_disk=True, save_to=pic_save)
+    imp_headers = list(data.columns)
+    fit_headers=[]
+    if not isinstance(col, (tuple, list)): col = [col]
+    for j in range(len(col)):
+        if col[j] is not None:
+            fit_headers = [*fit_headers, 'Fit '+imp_headers[col[j]]]
+        else:
+            fit_headers = [*fit_headers, 'Fit species ' + str(j + 1)]
+    exp_headers = [imp_headers[t_col], *['Exp '+imp_headers[i] for i in col if i is not None], *fit_headers, 'Fit rate']
 
-    param_dict = make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_lim, r_ord_lim, cat_ord_lim,
-                                 t_del_lim, t_col, TIC_col, r_col, p_col, scale_avg_num, win, inc, fit_asp)
+    html = plot_cake_results(x_data, y_data, fit, col, exp_headers,
+                             f_format='svg', return_image=False, save_disk=True, save_to=pic_save)
+
+    param_dict = make_param_dict(spec_type, react_vol_init, stoich=stoich, mol0=mol0, mol_end=mol_end,
+                                 add_sol_conc=add_sol_conc, add_cont_rate=add_cont_rate, t_cont=t_cont,
+                                 t_col=t_col, col=col, ord_lim=None, fit_asp=fit_asp)
 
     # write_fit_data(xlsx_save, df, param_dict, t, r, p, fit_p, fit_r, res_val, res_err, ss_res, r_squared, cat_pois)
-    file, _ = write_fit_data_temp(df, param_dict, t, r, p, fit_p, fit_r, res_val, res_err, ss_res, r_squared, cat_pois,
-                                  cat_pois_err)
+    file, _ = write_fit_data_temp(df, param_dict, x_data, y_data, fit,
+                   k_fit, k_fit_err, ord_fit, ord_fit_err, pois_fit, pois_fit_err, ss_res, r_squared)
     file.seek(0)
     with open(xlsx_save, "wb") as f:
         f.write(file.getbuffer())
