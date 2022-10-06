@@ -298,7 +298,6 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
     elif p_locs:
         for i in p_locs:
             if ord_lim[i] is None: ord_lim[i] = 0
-    print(ord_lim)
     if pois_lim is None: pois_lim = [0] * len(spec_type)
 
     stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, t_col, col, \
@@ -306,8 +305,8 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
     add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, t_col, col, ord_lim, pois_lim, fit_asp])
     add_cont_rate, t_cont, add_one_shot, t_one_shot = map(tuple_of_lists_from_tuple_of_int_float,
                                             [add_cont_rate, t_cont, add_one_shot, t_one_shot])
-    print(spec_type, react_vol_init, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot,
-          t_one_shot, add_col, t_col, col, k_lim, ord_lim, pois_lim, fit_asp, TIC_col, scale_avg_num, win, inc)
+    #print(spec_type, react_vol_init, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot,
+          #t_one_shot, add_col, t_col, col, k_lim, ord_lim, pois_lim, fit_asp, TIC_col, scale_avg_num, win, inc)
 
     fix_ord_locs = [i for i in range(len(ord_lim)) if (isinstance(ord_lim[i], (int, float))
                     or (isinstance(ord_lim[i], (tuple, list)) and len(ord_lim[i]) == 1))]
@@ -320,18 +319,22 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
                       range(1 + len(var_ord_locs), 1 + len(var_ord_locs) + len(var_pois_locs))]
     inc += 1
 
+    # Get x_data
     x_data = data_smooth(df, t_col, win)
+    x_data_add = add_sim(np.reshape(x_data, (len(x_data))), inc)
+
+    #Get TIC
+    if TIC_col is not None:
+        TIC = data_smooth(df, TIC_col, win)
+    else:
+        TIC = None
+
+    # Calculate iterative species additions and volumes
     data_org = df.to_numpy()
     data_mod = np.empty((len(x_data), len(spec_type)))
     add_pops = np.zeros((len(x_data), len(spec_type)))
     vol = np.ones(len(x_data)) * react_vol_init
-
-    TIC = None
-    if TIC_col is not None:
-        TIC = data_smooth(df, TIC_col, win)
-    col_ext = []
     for i in range(len(col)):
-        # previous version worked with "Overhaul" at 12:02 23/09/22
         if add_col[i] is not None:
             add_pops[:, i] = data_smooth(df, add_col[i], win)
         else:
@@ -351,6 +354,17 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
     for i in range(len(spec_type)):
         if add_sol_conc[i] is not None: add_pops[:, i] = add_pops[:, i] * add_sol_conc[i]
 
+    add_pops_add = np.zeros((len(x_data_add), len(spec_type)))
+    for i in range(len(spec_type)):
+        add_pops_add[:, i] = add_sim(add_pops[:, i], inc)
+    add_pops_add_new = np.zeros((len(x_data_add), len(spec_type)))
+    for i in range(1, len(add_pops_add)):
+        add_pops_add_new[i] = add_pops_add[i] - add_pops_add[i - 1]
+    add_pops_add = add_pops_add_new
+    vol_data_add = add_sim(vol, inc)
+
+    # Determine mol0, mol_end and scale data as required
+    col_ext = []
     for i in range(len(col)):
         if col[i] is not None:
             col_ext = [*col_ext, i]
@@ -378,23 +392,14 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
         if col[i] is None and mol_end[i] is None:
             mol_end[i] = 0  # May cause issues
 
-    # manipulate data for fitting
-    x_data_add = add_sim(np.reshape(x_data, (len(x_data))), inc)
-    add_pops_add = np.zeros((len(x_data_add), len(spec_type)))
-    for i in range(len(spec_type)):
-        add_pops_add[:, i] = add_sim(add_pops[:, i], inc)
-    add_pops_add_new = np.zeros((len(x_data_add), len(spec_type)))
-    for i in range(1, len(add_pops_add)):
-        add_pops_add_new[i] = add_pops_add[i] - add_pops_add[i - 1]
-    add_pops_add = add_pops_add_new
-    vol_data_add = add_sim(vol, inc)
+    # Manipulate data for fitting
     x_data_add_to_fit = np.empty(0)
     y_data_to_fit = np.empty(0)
     for i in range(len(fit_asp_locs)):
         x_data_add_to_fit = np.append(x_data_add_to_fit, x_data_add, axis=0)
         y_data_to_fit = np.append(y_data_to_fit, data_mod[:, fit_asp_locs[i]], axis=0)
 
-    # define initial values and lower and upper limits for parameters to fit: k, ord and pois
+    # Define initial values and lower and upper limits for parameters to fit: ord and pois
     bound_adj = 1E-3
     ord_val, ord_min, ord_max, pois_val, pois_min, pois_max = [], [], [], [], [], []
     for i in range(len(var_ord_locs)):
@@ -416,6 +421,7 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
         mol0[i] -= pois_lim[i]
         mol_end[i] -= pois_lim[i]
 
+    # Define initial values and lower and upper limits for parameters to fit: k
     if k_lim is None or (isinstance(k_lim, (int, float)) and k_lim == 0) or \
             (isinstance(k_lim, (tuple, list)) and len(k_lim) == 1 and (k_lim[0] is None or k_lim[0] == 0)):  # need to find a better way to estimate k
         k_first_guess = np.zeros([len(range(-13, 13)), 2])
@@ -467,20 +473,20 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
     low_bounds = [k_min, *ord_min, *pois_min]
     up_bounds = [k_max, *ord_max, *pois_max]
 
-    # apply fittings, determine optimal parameters and determine resulting fits
+    # Apply fittings, determine optimal parameters and determine resulting fits
     fit_param_res = optimize.curve_fit(eq_sim_fit, x_data_add_to_fit, y_data_to_fit, init_param, maxfev=10000,
                                        bounds=(low_bounds, up_bounds))
     fit_param = fit_param_res[0]
     k_fit = fit_param[fit_param_locs[0]]
     ord_fit = fit_param[fit_param_locs[1]]
     pois_fit = fit_param[fit_param_locs[2]]
-    #print(k_fit, *ord_fit, *pois_fit)
+    # print(k_fit, *ord_fit, *pois_fit)
     fit_pops_set = eq_sim_fit(x_data_add_to_fit, k_fit, *ord_fit, *pois_fit)
     fit_pops_all, fit_rate_all = eq_sim_gen(stoich, mol0, mol_end, add_pops_add, vol_data_add, inc, ord_lim,
                                             r_locs, p_locs, c_locs, fix_ord_locs, var_ord_locs, var_pois_locs,
                                             x_data_add, fit_param, fit_param_locs)
 
-    # calculate residuals and errors
+    # Calculate residuals and errors
     fit_param_err = np.sqrt(np.diag(fit_param_res[1]))  # for 1SD
     k_fit_err = fit_param_err[fit_param_locs[0]]
     ord_fit_err = fit_param_err[fit_param_locs[1]]
@@ -726,7 +732,7 @@ if __name__ == "__main__":
     pic_save = r'/Users/bhenders/Desktop/CAKE/cake_app_test.png'
     xlsx_save = r'/Users/bhenders/Desktop/CAKE/fit_data.xlsx'
 
-    df = read_data(file_name, sheet_name)
+    df = read_data(file_name, sheet_name, t_col, col)
     output = fit_cake(df, spec_type, react_vol_init, stoich=stoich, mol0=mol0, mol_end=mol_end,
                         add_sol_conc=add_sol_conc, add_cont_rate=add_cont_rate, t_cont=t_cont,
                         t_col=t_col, col=col, ord_lim=ord_lim, fit_asp=fit_asp)
