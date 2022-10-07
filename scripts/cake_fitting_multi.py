@@ -76,7 +76,7 @@ def add_sim(s, inc):
 
 
 # smooth data (if required)
-def data_smooth(df, d_col, win=1):
+def data_smooth(arr, d_col, win=1):
     """
     Function Description
 
@@ -89,11 +89,12 @@ def data_smooth(df, d_col, win=1):
 
     """
     if win <= 1:
-        d_ext = df.iloc[:, d_col].values
+        d_ra = arr[:, d_col]
     else:
-        d_ra = df.iloc[:, d_col].rolling(win).mean().values
-        d_ext = d_ra[np.logical_not(np.isnan(d_ra))]
-    return d_ext
+        ret = np.cumsum(arr[:, d_col], dtype=float)
+        ret[win:] = ret[win:] - ret[:-win]
+        d_ra = ret[win - 1:] / win
+    return d_ra
 
 
 # manipulate to TIC values (for MS only)
@@ -182,8 +183,8 @@ def find_nearest(array, value):
     return index
 
 
-def return_all_nones(s, spec_type):
-    if s is None: s = [None] * len(spec_type)
+def return_all_nones(s, num_spec):
+    if s is None: s = [None] * num_spec
     return s
 
 
@@ -201,6 +202,33 @@ def tuple_of_lists_from_tuple_of_int_float(s):
         else:
             s_list = [*s_list, s[i]]
     return s_list
+
+
+def get_add_pops_vol(data_org, x_data_org, x_data_new, num_spec, react_vol_init, add_sol_conc,
+                     add_col, add_cont_rate, t_cont, add_one_shot, t_one_shot, win=1):
+    add_pops = np.zeros((len(x_data_new), num_spec))
+    vol = np.ones(len(x_data_new)) * react_vol_init
+    for i in range(num_spec):
+        if add_col[i] is not None:
+            add_pops[:, i] = data_smooth(data_org, add_col[i], win)
+        else:
+            add_pops_i = np.zeros((len(x_data_org), 1))
+            if add_cont_rate[i] is not None and add_cont_rate[i] != 0:
+                for j in range(len(add_cont_rate[i])):
+                    index = find_nearest(x_data_org, t_cont[i][j])
+                    for k in range(index + 1, len(x_data_org)):
+                        add_pops_i[k] = add_pops_i[k - 1] + add_cont_rate[i][j] * \
+                                        (x_data_org[k] - x_data_org[k - 1])
+            if add_one_shot[i] is not None and add_one_shot[i] != 0:
+                for j in range(len(add_one_shot[i])):
+                    index = find_nearest(x_data_org, t_one_shot[i][j])
+                    add_pops_i[index:] += add_one_shot[i][j]
+            add_pops[:, i] = data_smooth(add_pops_i, 0, win)
+    vol += add_pops.sum(axis=1)
+    for i in range(num_spec):
+        if add_sol_conc[i] is not None: add_pops[:, i] = add_pops[:, i] * add_sol_conc[i]
+    return add_pops, vol
+
 
 def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, add_sol_conc=None, add_cont_rate=None,
              t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None, t_col=0, col=1, k_lim=None, ord_lim=None,
@@ -275,19 +303,20 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
         return pops_reshape
 
     spec_type = type_to_list(spec_type)
-    r_locs = [i for i in range(len(spec_type)) if 'r' in spec_type[i]]
-    p_locs = [i for i in range(len(spec_type)) if 'p' in spec_type[i]]
-    c_locs = [i for i in range(len(spec_type)) if 'c' in spec_type[i]]
+    num_spec = len(spec_type)
+    r_locs = [i for i in range(num_spec) if 'r' in spec_type[i]]
+    p_locs = [i for i in range(num_spec) if 'p' in spec_type[i]]
+    c_locs = [i for i in range(num_spec) if 'c' in spec_type[i]]
 
-    if stoich is None: stoich = [1] * len(spec_type)
-    mol0 = return_all_nones(mol0, spec_type)
-    mol_end = return_all_nones(mol_end, spec_type)
-    add_sol_conc = return_all_nones(add_sol_conc, spec_type)
-    add_cont_rate = return_all_nones(add_cont_rate, spec_type)
-    t_cont = return_all_nones(t_cont, spec_type)
-    add_one_shot = return_all_nones(add_one_shot, spec_type)
-    t_one_shot = return_all_nones(t_one_shot, spec_type)
-    add_col = return_all_nones(add_col, spec_type)
+    if stoich is None: stoich = [1] * num_spec
+    mol0 = return_all_nones(mol0, num_spec)
+    mol_end = return_all_nones(mol_end, num_spec)
+    add_sol_conc = return_all_nones(add_sol_conc, num_spec)
+    add_cont_rate = return_all_nones(add_cont_rate, num_spec)
+    t_cont = return_all_nones(t_cont, num_spec)
+    add_one_shot = return_all_nones(add_one_shot, num_spec)
+    t_one_shot = return_all_nones(t_one_shot, num_spec)
+    add_col = return_all_nones(add_col, num_spec)
     if ord_lim is None:
         ord_lim = []
         for i in spec_type:
@@ -298,7 +327,7 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
     elif p_locs:
         for i in p_locs:
             if ord_lim[i] is None: ord_lim[i] = 0
-    if pois_lim is None: pois_lim = [0] * len(spec_type)
+    if pois_lim is None: pois_lim = [0] * num_spec
 
     stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, t_col, col, \
     ord_lim, pois_lim, fit_asp = map(type_to_list, [stoich, mol0, mol_end, add_sol_conc,
@@ -308,67 +337,48 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
     #print(spec_type, react_vol_init, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot,
           #t_one_shot, add_col, t_col, col, k_lim, ord_lim, pois_lim, fit_asp, TIC_col, scale_avg_num, win, inc)
 
-    fix_ord_locs = [i for i in range(len(ord_lim)) if (isinstance(ord_lim[i], (int, float))
+    fix_ord_locs = [i for i in range(num_spec) if (isinstance(ord_lim[i], (int, float))
                     or (isinstance(ord_lim[i], (tuple, list)) and len(ord_lim[i]) == 1))]
-    var_ord_locs = [i for i in range(len(ord_lim)) if (isinstance(ord_lim[i], (tuple, list)) and len(ord_lim[i]) > 1)]
-    fix_pois_locs = [i for i in range(len(pois_lim)) if (isinstance(pois_lim[i], (int, float))
+    var_ord_locs = [i for i in range(num_spec) if (isinstance(ord_lim[i], (tuple, list)) and len(ord_lim[i]) > 1)]
+    fix_pois_locs = [i for i in range(num_spec) if (isinstance(pois_lim[i], (int, float))
                     or (isinstance(pois_lim[i], (tuple, list)) and len(pois_lim[i]) == 1))]
-    var_pois_locs = [i for i in range(len(pois_lim)) if (isinstance(pois_lim[i], (tuple, list, str)) and len(pois_lim[i]) > 1)]
-    fit_asp_locs = [i for i in range(len(fit_asp)) if 'y' in fit_asp[i]]
+    var_pois_locs = [i for i in range(num_spec) if (isinstance(pois_lim[i], (tuple, list, str)) and len(pois_lim[i]) > 1)]
+    fit_asp_locs = [i for i in range(num_spec) if 'y' in fit_asp[i]]
     fit_param_locs = [0, range(1, 1 + len(var_ord_locs)),
                       range(1 + len(var_ord_locs), 1 + len(var_ord_locs) + len(var_pois_locs))]
     inc += 1
 
     # Get x_data
-    x_data = data_smooth(df, t_col, win)
+    data_org = df.to_numpy()
+    x_data = data_smooth(data_org, t_col, win)
     x_data_add = add_sim(np.reshape(x_data, (len(x_data))), inc)
 
     #Get TIC
     if TIC_col is not None:
-        TIC = data_smooth(df, TIC_col, win)
+        TIC = data_smooth(data_org, TIC_col, win)
     else:
         TIC = None
 
     # Calculate iterative species additions and volumes
-    data_org = df.to_numpy()
-    data_mod = np.empty((len(x_data), len(spec_type)))
-    add_pops = np.zeros((len(x_data), len(spec_type)))
-    vol = np.ones(len(x_data)) * react_vol_init
-    for i in range(len(col)):
-        if add_col[i] is not None:
-            add_pops[:, i] = data_smooth(df, add_col[i], win)
-        else:
-            add_pops_i = np.zeros(len(data_org[:, t_col]))
-            if add_cont_rate[i] is not None and add_cont_rate[i] != 0:
-                for j in range(len(add_cont_rate[i])):
-                    index = find_nearest(data_org[:, t_col], t_cont[i][j])
-                    for k in range(index + 1, len(data_org[:, t_col])):
-                        add_pops_i[k] = add_pops_i[k - 1] + add_cont_rate[i][j] * \
-                                        (data_org[k, t_col] - data_org[k - 1, t_col])
-            if add_one_shot[i] is not None and add_one_shot[i] != 0:
-                for j in range(len(add_one_shot[i])):
-                    index = find_nearest(data_org[:, t_col], t_one_shot[i][j])
-                    add_pops_i[index:] += add_one_shot[i][j]
-            add_pops[:, i] = data_smooth(pd.DataFrame(add_pops_i), 0, win)
-    vol += add_pops.sum(axis=1)
-    for i in range(len(spec_type)):
-        if add_sol_conc[i] is not None: add_pops[:, i] = add_pops[:, i] * add_sol_conc[i]
+    add_pops, vol = get_add_pops_vol(data_org, data_org[:, t_col], x_data, num_spec, react_vol_init, add_sol_conc,
+                         add_col, add_cont_rate, t_cont, add_one_shot, t_one_shot, win=win)
 
-    add_pops_add = np.zeros((len(x_data_add), len(spec_type)))
-    for i in range(len(spec_type)):
+    add_pops_add = np.zeros((len(x_data_add), num_spec))
+    for i in range(num_spec):
         add_pops_add[:, i] = add_sim(add_pops[:, i], inc)
-    add_pops_add_new = np.zeros((len(x_data_add), len(spec_type)))
+    add_pops_add_new = np.zeros((len(x_data_add), num_spec))
     for i in range(1, len(add_pops_add)):
         add_pops_add_new[i] = add_pops_add[i] - add_pops_add[i - 1]
     add_pops_add = add_pops_add_new
     vol_data_add = add_sim(vol, inc)
 
     # Determine mol0, mol_end and scale data as required
+    data_mod = np.empty((len(x_data), num_spec))
     col_ext = []
-    for i in range(len(col)):
+    for i in range(num_spec):
         if col[i] is not None:
             col_ext = [*col_ext, i]
-            data_i = data_smooth(df, col[i], win)
+            data_i = data_smooth(data_org, col[i], win)
             data_i = tic_norm(data_i, TIC)
             if mol0[i] is None and scale_avg_num == 0:
                 mol0[i] = data_i[0] * vol[0]
@@ -626,8 +636,8 @@ def plot_cake_results(x_data, y_data, fit, col, exp_headers, f_format='svg', ret
                 plt.plot(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, label=data_headers[i])
         for i in range(len(fit_headers)):
             plt.plot(x_data, fit[:, i] * y_ax_scale, label=fit_headers[i])
-        plt.xlim([min(x_data * x_ax_scale) - (edge_adj * max(x_data * x_ax_scale)), max(x_data * x_ax_scale) * (1 + edge_adj)])
-        plt.ylim([(min(np.min(y_data), np.min(fit)) - edge_adj * max(np.max(y_data), np.max(fit)) * x_ax_scale), max(np.max(y_data), np.max(fit)) * x_ax_scale * (1 + edge_adj)])
+        plt.xlim([float(min(x_data * x_ax_scale) - (edge_adj * max(x_data * x_ax_scale))), float(max(x_data * x_ax_scale) * (1 + edge_adj))])
+        plt.ylim([float(min(np.min(y_data), np.min(fit)) - edge_adj * max(np.max(y_data), np.max(fit)) * x_ax_scale), float(max(np.max(y_data), np.max(fit)) * x_ax_scale * (1 + edge_adj))])
         plt.legend(prop={'size': 10}, frameon=False)
     else:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
@@ -653,10 +663,10 @@ def plot_cake_results(x_data, y_data, fit, col, exp_headers, f_format='svg', ret
             ax2.plot(x_data * x_ax_scale, fit[:, i] * y_ax_scale, color=std_colours[cur_clr], label=fit_headers[i])
             cur_clr += 1
 
-        ax1.set_xlim([(min(x_data) - edge_adj * max(x_data) * x_ax_scale), max(x_data) * x_ax_scale * (1 + edge_adj)])
-        ax1.set_ylim([(min(np.min(y_data), np.min(fit[:, data_fit_col])) - edge_adj * max(np.max(y_data), np.max(fit[:, data_fit_col])) * x_ax_scale), max(np.max(y_data), np.max(fit[:, data_fit_col])) * x_ax_scale * (1 + edge_adj)])
-        ax2.set_xlim([(min(x_data) - edge_adj * max(x_data) * x_ax_scale), max(x_data) * x_ax_scale * (1 + edge_adj)])
-        ax2.set_ylim([(min(np.min(y_data), np.min(fit)) - edge_adj * max(np.max(y_data), np.max(fit)) * x_ax_scale), max(np.max(y_data), np.max(fit)) * x_ax_scale * (1 + edge_adj)])
+        ax1.set_xlim([float(min(x_data) - edge_adj * max(x_data) * x_ax_scale), float(max(x_data) * x_ax_scale * (1 + edge_adj))])
+        ax1.set_ylim([float(min(np.min(y_data), np.min(fit[:, data_fit_col])) - edge_adj * max(np.max(y_data), np.max(fit[:, data_fit_col])) * x_ax_scale), float(max(np.max(y_data), np.max(fit[:, data_fit_col])) * x_ax_scale * (1 + edge_adj))])
+        ax2.set_xlim([float(min(x_data) - edge_adj * max(x_data) * x_ax_scale), float(max(x_data) * x_ax_scale * (1 + edge_adj))])
+        ax2.set_ylim([float(min(np.min(y_data), np.min(fit)) - edge_adj * max(np.max(y_data), np.max(fit)) * x_ax_scale), float(max(np.max(y_data), np.max(fit)) * x_ax_scale * (1 + edge_adj))])
         ax1.legend(prop={'size': 10}, frameon=False)
         ax2.legend(prop={'size': 10}, frameon=False)
 
