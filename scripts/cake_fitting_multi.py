@@ -371,7 +371,6 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
         add_pops_add_new[i] = add_pops_add[i] - add_pops_add[i - 1]
     add_pops_add = add_pops_add_new
     vol_data_add = add_sim(vol, inc)
-
     # Determine mol0, mol_end and scale data as required
     data_mod = np.empty((len(x_data), num_spec))
     col_ext = []
@@ -440,7 +439,7 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
             fit_guess = eq_sim_fit(x_data_add_to_fit, k_first_guess[i, 0], *ord_val, *pois_val)
             _, k_first_guess[i, -1] = residuals(y_data_to_fit, fit_guess)
         index = np.where(k_first_guess[:, -1] == max(k_first_guess[:, -1]))
-        k_first_guess = float(k_first_guess[index[0], 0])
+        k_first_guess = float(k_first_guess[index[0][0], 0])
 
         k_sec_guess_switch = "n"
         if "y" in k_sec_guess_switch:
@@ -736,7 +735,7 @@ if __name__ == "__main__":
     t_col = 0
     col = [1, 2, 3, None]
     ord_lim = [(1, 0, 2), 1, 0, (1, 0, 2)]
-    fit_asp = ["y", "n", "y", None]
+    fit_asp = ["y", "n", "y", "n"]
     file_name = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Case studies\CAKE preliminary trials.xlsx'
     sheet_name = r'Test_data'
     pic_save = r'/Users/bhenders/Desktop/CAKE/cake_app_test.png'
@@ -746,9 +745,9 @@ if __name__ == "__main__":
     output = fit_cake(df, spec_type, react_vol_init, stoich=stoich, mol0=mol0, mol_end=mol_end,
                         add_sol_conc=add_sol_conc, add_cont_rate=add_cont_rate, t_cont=t_cont,
                         t_col=t_col, col=col, ord_lim=ord_lim, fit_asp=fit_asp)
-    x_data, y_data, fit, fit_rate, k_val_est, k_fit, k_fit_err, ord_fit, ord_fit_err, pois_fit, pois_fit_err, ss_res, r_squared, col = CAKE
+    x_data, y_data, fit, fit_rate, k_val_est, k_fit, k_fit_err, ord_fit, ord_fit_err, pois_fit, pois_fit_err, ss_res, r_squared, col = output
 
-    imp_headers = list(data.columns)
+    imp_headers = list(df.columns)
     fit_headers=[]
     if not isinstance(col, (tuple, list)): col = [col]
     for j in range(len(col)):
