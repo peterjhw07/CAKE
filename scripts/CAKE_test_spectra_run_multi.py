@@ -37,8 +37,9 @@ total = np.empty([len(df), 12], object)
 for i in range(0, len(df)):
     [number, react_type] = df.iloc[i, :2]
     [spec_type, react_vol_init, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont] = df.iloc[i, 2:10]
-    [add_one_shot, t_one_shot, add_col, t_col, col, k_lim, ord_lim, pois_lim, fit_asp] = df.iloc[i, 10:19]
-    [TIC_col, scale_avg_num, win, inc, file_name, sheet_name, pic_save] = df.iloc[i, 19:]
+    [add_one_shot, t_one_shot, add_col, sub_cont_rate, sub_aliq, t_aliq, sub_col] = df.iloc[i, 10:17]
+    [t_col, col, k_lim, ord_lim, pois_lim, fit_asp] = df.iloc[i, 17:23]
+    [TIC_col, scale_avg_num, win, inc, file_name, sheet_name, pic_save] = df.iloc[i, 23:]
     print(number, react_type)
     spec_type = make_char_tup(spec_type)
     stoich = make_char_tup_and_sort(stoich)
@@ -50,6 +51,10 @@ for i in range(0, len(df)):
     add_one_shot = make_char_tup_and_sort(add_one_shot)
     t_one_shot = make_char_tup_and_sort(t_one_shot)
     add_col = make_char_tup_and_sort(add_col)
+    sub_cont_rate = make_char_tup_and_sort(sub_cont_rate)
+    sub_aliq = make_char_tup_and_sort(sub_aliq)
+    t_aliq = make_char_tup_and_sort(t_aliq)
+    sub_col = make_char_tup_and_sort(sub_col)
     col = make_char_tup_and_sort(col)
     k_lim = make_char_tup_and_sort(k_lim)
     ord_lim = make_char_tup_and_sort(ord_lim)
@@ -57,13 +62,13 @@ for i in range(0, len(df)):
     fit_asp = make_char_tup(fit_asp)
     sheet_name = str(sheet_name)
     #print(spec_type, react_vol_init, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, t_col, col, k_lim, ord_lim, pois_lim, fit_asp, TIC_col, scale_avg_num, win, inc, file_name, sheet_name, pic_save)
-    data = cake_fitting_multi.read_data(file_name, sheet_name, t_col, col)
+    data = cake_fitting_multi.read_data(file_name, sheet_name, t_col, col, add_col, sub_col)
     starttime = timeit.default_timer()
     output = cake_fitting_multi.fit_cake(data, spec_type, react_vol_init, stoich=stoich, mol0=mol0, mol_end=mol_end,
-                                         add_sol_conc=add_sol_conc, add_cont_rate=add_cont_rate, t_cont=t_cont,
-                                         add_one_shot=add_one_shot, t_one_shot=t_one_shot, add_col=add_col, t_col=t_col,
-                                         col=col, k_lim=k_lim, ord_lim=ord_lim, pois_lim=pois_lim, fit_asp=fit_asp,
-                                         scale_avg_num=scale_avg_num, win=win, inc=inc)
+                    add_sol_conc=add_sol_conc, add_cont_rate=add_cont_rate, t_cont=t_cont, add_one_shot=add_one_shot,
+                    t_one_shot=t_one_shot, add_col=add_col, sub_cont_rate=sub_cont_rate,
+                    sub_aliq=sub_aliq, t_aliq=t_aliq, sub_col=sub_col, t_col=t_col, col=col, k_lim=k_lim, ord_lim=ord_lim,
+                    pois_lim=pois_lim, fit_asp=fit_asp, scale_avg_num=scale_avg_num, win=win, inc=inc)
     x_data, y_data, fit, fit_rate, k_val_est, k_fit, k_fit_err, ord_fit, ord_fit_err, pois_fit, pois_fit_err, ss_res, r_squared, col = output
     time_taken = timeit.default_timer() - starttime
     print(k_fit, k_fit_err, ord_fit, ord_fit_err, pois_fit, pois_fit_err)

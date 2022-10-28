@@ -16,8 +16,8 @@ log.setLevel(logging.DEBUG)
 
 
 # general kinetic simulator
-def eq_sim_gen(stoich, mol0, mol_end, add_pops, vol, inc, ord_lim, r_locs, p_locs, c_locs, fix_ord_locs, var_ord_locs,
-               var_pois_locs, t_fit, fit_param, fit_param_locs):
+def eq_sim_gen(stoich, mol0, mol_end, add_pops, vol, vol_loss_rat, inc, ord_lim, r_locs, p_locs, c_locs,
+               fix_ord_locs, var_ord_locs, var_pois_locs, t_fit, fit_param, fit_param_locs):
     """
     Function Description
 
@@ -41,11 +41,11 @@ def eq_sim_gen(stoich, mol0, mol_end, add_pops, vol, inc, ord_lim, r_locs, p_loc
     rate[i] = k * np.prod([(max(0, pops[i, j]) / vol[i]) ** ord_lim[j] for j in fix_ord_locs]) * np.prod([(max(0, pops[i, var_ord_locs[j]]) / vol[i]) ** ord[j] for j in range(len(var_ord_locs))])
     for i in range(1, len(t_fit)):
         t_span = t_fit[i] - t_fit[i - 1]
-        pops[i, r_locs] = [pops[i - 1, j] - (t_span * rate[i - 1] * stoich[j]) * vol[i - 1]
+        pops[i, r_locs] = [pops[i - 1, j] * vol_loss_rat[i] - (t_span * rate[i - 1] * stoich[j]) * vol[i - 1]
                            + add_pops[i, j] for j in r_locs]
-        pops[i, p_locs] = [pops[i - 1, j] + (t_span * rate[i - 1] * stoich[j]) * vol[i - 1]
+        pops[i, p_locs] = [pops[i - 1, j] * vol_loss_rat[i] + (t_span * rate[i - 1] * stoich[j]) * vol[i - 1]
                            + add_pops[i, j] for j in p_locs]
-        pops[i, c_locs] = [pops[i - 1, j] + add_pops[i, j] for j in c_locs]
+        pops[i, c_locs] = [pops[i - 1, j] * vol_loss_rat[i] + add_pops[i, j] for j in c_locs]
         rate[i] = k * np.prod([(max(0, pops[i, j]) / vol[i]) ** ord_lim[j] for j in fix_ord_locs]) * np.prod([(max(0, pops[i, var_ord_locs[j]]) / vol[i]) ** ord[j] for j in range(len(var_ord_locs))])
     pops[pops < 0] = 0
     pops[:] = [pops[i, :] / vol[i] for i in range(0, len(t_fit))]
@@ -136,7 +136,7 @@ def residuals(y_data, fit):
     return [ss_res, r_squared]
 
 
-def read_data(file_name, sheet_name, t_col, col):
+def read_data(file_name, sheet_name, t_col, col, add_col, sub_col):
     """
     Read in data from excel filename
 
@@ -151,7 +151,9 @@ def read_data(file_name, sheet_name, t_col, col):
     df = pd.read_excel(file_name, sheet_name=sheet_name, engine='openpyxl', dtype=str)
     headers = list(pd.read_excel(file_name, sheet_name=sheet_name, engine='openpyxl').columns)
     if isinstance(col, int): col = [col]
-    conv_col = [i for i in [t_col, *col] if i is not None]
+    if add_col is None: add_col = [None]
+    elif isinstance(add_col, int): add_col = [add_col]
+    conv_col = [i for i in [t_col, *col, *add_col, sub_col] if i is not None]
     try:
         for i in conv_col:
             df[headers[i]] = pd.to_numeric(df[headers[i]], downcast="float")
@@ -204,8 +206,8 @@ def tuple_of_lists_from_tuple_of_int_float(s):
     return s_list
 
 
-def get_add_pops_vol(data_org, x_data_org, x_data_new, num_spec, react_vol_init, add_sol_conc,
-                     add_col, add_cont_rate, t_cont, add_one_shot, t_one_shot, win=1):
+def get_add_pops_vol(data_org, x_data_org, x_data_new, num_spec, react_vol_init, add_sol_conc, add_cont_rate, t_cont,
+                     add_one_shot, t_one_shot, add_col, sub_cont_rate, sub_aliq, t_aliq, sub_col, win=1):
     add_pops = np.zeros((len(x_data_new), num_spec))
     vol = np.ones(len(x_data_new)) * react_vol_init
     for i in range(num_spec):
@@ -227,11 +229,29 @@ def get_add_pops_vol(data_org, x_data_org, x_data_new, num_spec, react_vol_init,
     vol += add_pops.sum(axis=1)
     for i in range(num_spec):
         if add_sol_conc[i] is not None: add_pops[:, i] = add_pops[:, i] * add_sol_conc[i]
-    return add_pops, vol
+
+    if sub_col is not None:
+        vol_loss = data_smooth(data_org, sub_col, win)
+    else:
+        vol_loss_i = np.zeros((len(x_data_org), 1))
+        if sub_cont_rate is not None and sub_cont_rate != 0:
+            for i in range(1, len(x_data_org)):
+                vol_loss_i[i] = vol_loss_i[i - 1] + sub_cont_rate * \
+                                (x_data_org[i] - x_data_org[i - 1])
+        if sub_aliq[0] is not None and sub_aliq[0] != 0:
+            for i in range(len(sub_aliq)):
+                index = find_nearest(x_data_org, t_aliq[i])
+                vol_loss_i[index:] += sub_aliq[i]
+        vol_loss = data_smooth(vol_loss_i, 0, win)
+    vol_loss = np.reshape(vol_loss, len(vol_loss))
+    vol -= [np.float64(vol_loss[i]) for i in range(len(vol_loss))]
+    vol_loss_rat = [1.0] + [1 - ((vol_loss[i] - vol_loss[i - 1]) / vol[i - 1]) for i in range(1, len(vol_loss))]
+    return add_pops, vol, vol_loss_rat
 
 
 def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, add_sol_conc=None, add_cont_rate=None,
-             t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None, t_col=0, col=1, k_lim=None, ord_lim=None,
+             t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None, sub_cont_rate=None,
+             sub_aliq=None, t_aliq=None, sub_col=None, t_col=0, col=1, k_lim=None, ord_lim=None,
              pois_lim=None, fit_asp="y", TIC_col=None, scale_avg_num=0, win=1, inc=1):
     """
     Params
@@ -251,7 +271,7 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
     add_sol_conc : list of float or None, optional
         Concentration of solution being added for each species in moles_unit volume_unit^-1.
         Default None (no addition solution for all species)
-    add_cont_rate : list of tuple of float or None, optional
+    add_cont_rate : list of float or list of tuple of float or None, optional
         Continuous addition rates of species in moles_unit volume_unit^-1 time_unit^-1.
         Default None (no continuous addition for all species)
     t_cont : list of tuple of float or None, optional
@@ -266,6 +286,18 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
         Index of addition column for each species, where addition column is in volume_unit.
         If not None, overwrites add_cont_rate, t_cont, add_one_shot and t_one_shot for each species.
         Default None (no add_col for all species)
+    sub_cont_rate : float or None, optional
+        Continuous addition rates of species in moles_unit volume_unit^-1 time_unit^-1.
+        Default None (no continuous addition for all species)
+    sub_aliq : float or list of float or None, optional
+        Aliquot subtractions in volume_unit for each species. Default None (no aliquot subtractions)
+    t_aliq : float or list of float or None, optional
+        Times at which aliquot subtractions occurred in time_unit^-1.
+        Default None (no aliquot subtractions)
+    sub_col : list of int or None, optional
+        Index of subtraction column, where subtraction column is in volume_unit.
+        If not None, overwrites sub_cont_rate, sub_aliq and t_aliq.
+        Default None (no sub_col)
     t_col : int
         Index of time column. Default 0
     col : list of int
@@ -295,7 +327,8 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
 
     def eq_sim_fit(x_data_sim, *fit_param):
         x_data_fit = x_data_sim[:int(len(x_data_sim) / len(fit_asp_locs))]
-        pops, rate = eq_sim_gen(stoich, mol0, mol_end, add_pops_add, vol_data_add, inc, ord_lim, r_locs, p_locs, c_locs,
+        pops, rate = eq_sim_gen(stoich, mol0, mol_end, add_pops_add, vol_data_add, vol_loss_rat_data_add,
+                                inc, ord_lim, r_locs, p_locs, c_locs,
                                 fix_ord_locs, var_ord_locs, var_pois_locs, x_data_fit, fit_param, fit_param_locs)
         pops_reshape = np.empty(0)
         for i in fit_asp_locs:
@@ -329,13 +362,14 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
             if ord_lim[i] is None: ord_lim[i] = 0
     if pois_lim is None: pois_lim = [0] * num_spec
 
-    stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, t_col, col, \
-    ord_lim, pois_lim, fit_asp = map(type_to_list, [stoich, mol0, mol_end, add_sol_conc,
-    add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, t_col, col, ord_lim, pois_lim, fit_asp])
+    stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, sub_aliq, t_aliq, \
+    t_col, col, ord_lim, pois_lim, fit_asp = map(type_to_list, [stoich, mol0, mol_end, add_sol_conc,
+    add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, sub_aliq, t_aliq, t_col, col, ord_lim, pois_lim, fit_asp])
     add_cont_rate, t_cont, add_one_shot, t_one_shot = map(tuple_of_lists_from_tuple_of_int_float,
                                             [add_cont_rate, t_cont, add_one_shot, t_one_shot])
-    #print(spec_type, react_vol_init, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot,
-          #t_one_shot, add_col, t_col, col, k_lim, ord_lim, pois_lim, fit_asp, TIC_col, scale_avg_num, win, inc)
+    print(spec_type, react_vol_init, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot,
+          t_one_shot, add_col, sub_cont_rate, sub_aliq, t_aliq, sub_col, t_col, col, k_lim, ord_lim, pois_lim,
+          fit_asp, TIC_col, scale_avg_num, win, inc)
 
     fix_ord_locs = [i for i in range(num_spec) if (isinstance(ord_lim[i], (int, float))
                     or (isinstance(ord_lim[i], (tuple, list)) and len(ord_lim[i]) == 1))]
@@ -353,15 +387,16 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
     x_data = data_smooth(data_org, t_col, win)
     x_data_add = add_sim(np.reshape(x_data, (len(x_data))), inc)
 
-    #Get TIC
+    # Get TIC
     if TIC_col is not None:
         TIC = data_smooth(data_org, TIC_col, win)
     else:
         TIC = None
 
     # Calculate iterative species additions and volumes
-    add_pops, vol = get_add_pops_vol(data_org, data_org[:, t_col], x_data, num_spec, react_vol_init, add_sol_conc,
-                         add_col, add_cont_rate, t_cont, add_one_shot, t_one_shot, win=win)
+    add_pops, vol, vol_loss_rat = get_add_pops_vol(data_org, data_org[:, t_col], x_data, num_spec, react_vol_init,
+                                                   add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot,
+                                                   add_col, sub_cont_rate, sub_aliq, t_aliq, sub_col, win=win)
 
     add_pops_add = np.zeros((len(x_data_add), num_spec))
     for i in range(num_spec):
@@ -371,6 +406,7 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
         add_pops_add_new[i] = add_pops_add[i] - add_pops_add[i - 1]
     add_pops_add = add_pops_add_new
     vol_data_add = add_sim(vol, inc)
+    vol_loss_rat_data_add = add_sim(vol_loss_rat, inc)
     # Determine mol0, mol_end and scale data as required
     data_mod = np.empty((len(x_data), num_spec))
     col_ext = []
@@ -491,9 +527,9 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
     pois_fit = fit_param[fit_param_locs[2]]
     # print(k_fit, *ord_fit, *pois_fit)
     fit_pops_set = eq_sim_fit(x_data_add_to_fit, k_fit, *ord_fit, *pois_fit)
-    fit_pops_all, fit_rate_all = eq_sim_gen(stoich, mol0, mol_end, add_pops_add, vol_data_add, inc, ord_lim,
-                                            r_locs, p_locs, c_locs, fix_ord_locs, var_ord_locs, var_pois_locs,
-                                            x_data_add, fit_param, fit_param_locs)
+    fit_pops_all, fit_rate_all = eq_sim_gen(stoich, mol0, mol_end, add_pops_add, vol_data_add, vol_loss_rat_data_add,
+                                            inc, ord_lim, r_locs, p_locs, c_locs, fix_ord_locs, var_ord_locs,
+                                            var_pois_locs, x_data_add, fit_param, fit_param_locs)
 
     # Calculate residuals and errors
     fit_param_err = np.sqrt(np.diag(fit_param_res[1]))  # for 1SD
@@ -560,7 +596,8 @@ def write_fit_data_temp(df, param_dict, x_data, y_data, fit,
 
 
 def make_param_dict(spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, add_sol_conc=None, add_cont_rate=None,
-                    t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None, t_col=0, col=1, k_lim=None,
+                    t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None,
+                    sub_cont_rate=None, sub_aliq=None, t_aliq=None, sub_col=None, t_col=0, col=1, k_lim=None,
                     ord_lim=None, pois_lim=None, fit_asp="y", TIC_col=None, scale_avg_num=0, win=1, inc=1):
     param_dict = {'Species types': spec_type,
                   'Initial reaction solution volume': react_vol_init,
@@ -573,6 +610,10 @@ def make_param_dict(spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None
                   'One shot additions': add_one_shot,
                   'One shot addition start times': t_one_shot,
                   'Addition columns': add_col,
+                  'Continuous subtraction rate': sub_cont_rate,
+                  'Subtracted aliquot volumes': sub_aliq,
+                  'Subtracted aliquot start times': t_aliq,
+                  'Subtraction columns': sub_col,
                   'Time column': t_col,
                   'Species columns': col,
                   'Species to fit': fit_asp,
