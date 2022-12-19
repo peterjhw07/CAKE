@@ -342,14 +342,8 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
     c_locs = [i for i in range(num_spec) if 'c' in spec_type[i]]
 
     if stoich is None: stoich = [1] * num_spec
-    mol0 = return_all_nones(mol0, num_spec)
-    mol_end = return_all_nones(mol_end, num_spec)
-    add_sol_conc = return_all_nones(add_sol_conc, num_spec)
-    add_cont_rate = return_all_nones(add_cont_rate, num_spec)
-    t_cont = return_all_nones(t_cont, num_spec)
-    add_one_shot = return_all_nones(add_one_shot, num_spec)
-    t_one_shot = return_all_nones(t_one_shot, num_spec)
-    add_col = return_all_nones(add_col, num_spec)
+    mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col = map(return_all_nones,
+            [mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col], [num_spec] * 8)
     if ord_lim is None:
         ord_lim = []
         for i in spec_type:
@@ -367,9 +361,9 @@ def fit_cake(df, spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, a
     add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, sub_aliq, t_aliq, t_col, col, ord_lim, pois_lim, fit_asp])
     add_cont_rate, t_cont, add_one_shot, t_one_shot = map(tuple_of_lists_from_tuple_of_int_float,
                                             [add_cont_rate, t_cont, add_one_shot, t_one_shot])
-    print(spec_type, react_vol_init, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot,
-          t_one_shot, add_col, sub_cont_rate, sub_aliq, t_aliq, sub_col, t_col, col, k_lim, ord_lim, pois_lim,
-          fit_asp, TIC_col, scale_avg_num, win, inc)
+    # print(spec_type, react_vol_init, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot,
+          # t_one_shot, add_col, sub_cont_rate, sub_aliq, t_aliq, sub_col, t_col, col, k_lim, ord_lim, pois_lim,
+          # fit_asp, TIC_col, scale_avg_num, win, inc)
 
     fix_ord_locs = [i for i in range(num_spec) if (isinstance(ord_lim[i], (int, float))
                     or (isinstance(ord_lim[i], (tuple, list)) and len(ord_lim[i]) == 1))]

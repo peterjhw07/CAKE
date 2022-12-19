@@ -61,7 +61,7 @@ for i in range(0, len(df)):
     pois_lim = make_char_tup_and_sort(pois_lim)
     fit_asp = make_char_tup(fit_asp)
     sheet_name = str(sheet_name)
-    #print(spec_type, react_vol_init, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, t_col, col, k_lim, ord_lim, pois_lim, fit_asp, TIC_col, scale_avg_num, win, inc, file_name, sheet_name, pic_save)
+    # print(spec_type, react_vol_init, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, t_col, col, k_lim, ord_lim, pois_lim, fit_asp, TIC_col, scale_avg_num, win, inc, file_name, sheet_name, pic_save)
     data = cake_fitting_multi.read_data(file_name, sheet_name, t_col, col, add_col, sub_col)
     starttime = timeit.default_timer()
     output = cake_fitting_multi.fit_cake(data, spec_type, react_vol_init, stoich=stoich, mol0=mol0, mol_end=mol_end,
@@ -86,7 +86,7 @@ for i in range(0, len(df)):
     plot_output = cake_fitting_multi.plot_cake_results(x_data, y_data, fit, col, exp_headers,
                                                        f_format='png', save_disk=True, save_to=pic_save)
 
-    export_fit = "y"
+    export_fit = "n"
     if "y" in export_fit:
         all_data = np.concatenate((x_data, y_data, fit, fit_rate), axis=1)
         exportdf = pd.DataFrame(all_data, columns=exp_headers)

@@ -17,7 +17,7 @@ def error_bounds_sort(substrate):
     return substrate_adj
 
 # create dataframe
-df = pd.read_excel(r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Programmes\Test_Spectra.xlsx', sheet_name='Parameters')
+df = pd.read_excel(r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Programmes\CAKE_2.0\Test_Spectra_CAKE_2.0.xlsx', sheet_name='Parameters')
 df.replace('""', None, inplace=True)
 
 total = np.empty([len(df), 16], object)
@@ -45,7 +45,7 @@ for it in range(0, len(df)):
 
     exportdf = pd.DataFrame({"Time": t, "Concentration R": r, "Concentration P": p,
                              "Fit R": fit_r, "Fit P": fit_p})
-    with pd.ExcelWriter(r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Programmes\Test_Spectra_Results_Fit.xlsx',
+    with pd.ExcelWriter(r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Programmes\CAKE_2.0\Test_Spectra_Results_Fit_CAKE_2.0.xlsx',
                         mode='a', if_sheet_exists='replace') as writer:
         exportdf.to_excel(writer, sheet_name=str(number), index=False)
 
@@ -60,6 +60,6 @@ exportdf = pd.DataFrame({"Number":total[:, 0],"Type": total[:, 1],"k_val_est":to
                          "cat_pois_err":total[:, 12], "res_sum_squares":total[:, 13], "r_squared":total[:, 14],
                          "script_runtime":total[:, 15]})
 date = date.today().strftime("%y%m%d")
-with pd.ExcelWriter(r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Programmes\Test_Spectra_Results.xlsx',
+with pd.ExcelWriter(r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Programmes\CAKE_2.0\Test_Spectra_Results_CAKE_2.0.xlsx',
                     mode='a', if_sheet_exists='new') as writer:
     exportdf.to_excel(writer, sheet_name=date, index=False)  #usually use 'new'
