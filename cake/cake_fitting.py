@@ -8,10 +8,6 @@ import pandas as pd
 import io
 import base64
 from scipy import optimize
-import logging
-
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
 
 
 # general kinetic simulator
@@ -232,6 +228,7 @@ def get_cat_add_rate(cat_sol_conc, inject_rate, react_vol_init):
 
     """
     return (cat_sol_conc * inject_rate) / react_vol_init
+
 
 def fit_cake(df, stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_lim, r_ord_lim, cat_ord_lim, t_del_lim,
              t_col, TIC_col, r_col, p_col, scale_avg_num=0, win=1, inc=1, fit_asp='r'):
@@ -529,6 +526,7 @@ def make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_li
      'P_0': p0,
      'P_end': p_end,
      'Cat Add Rate': cat_add_rate,
+     'Cat Injection Time': t_inj,
      'Total Ion Count col': TIC_col,
      'R col': r_col,
      'P col': p_col,
@@ -538,31 +536,45 @@ def make_param_dict(stoich_r, stoich_p, r0, p0, p_end, cat_add_rate, t_inj, k_li
      'Interpolation Multiplier': inc,
      'Fitting Aspect': fit_asp
      }
-    if len(k_lim) == 1:
+    if k_lim is None:
+        param_dict['k Estimate'], param_dict['k Minimum'], param_dict['k Maximum'] = None, None, None
+    elif len(k_lim) == 1:
         param_dict['k Estimate'] = k_lim[0]
-        param_dict['k Minimum'] = k_lim[0] - (1E6 * k_lim[0])
-        param_dict['k Maximum'] = k_lim[0] + (1E6 * k_lim[0])
+        param_dict['k Minimum'] = None
+        param_dict['k Maximum'] = None
     else:
         param_dict['k Estimate'], param_dict['k Minimum'], param_dict['k Maximum'] = k_lim
 
-    if len(r_ord_lim) == 1:
+    if r_ord_lim is None:
+        param_dict['R Order Estimate'] = 1
+        param_dict['R Order Minimum'] = 0
+        param_dict['R Order Maximum'] = 2
+    elif len(r_ord_lim) == 1:
         param_dict['R Order Estimate'] = r_ord_lim[0]
-        param_dict['R Order Minimum'] = r_ord_lim[0] - 1E6
-        param_dict['R Order Maximum'] = r_ord_lim[0] + 1E6
+        param_dict['R Order Minimum'] = None
+        param_dict['R Order Maximum'] = None
     else:
         param_dict['R Order Estimate'], param_dict['R Order Minimum'], param_dict['R Order Maximum'] = r_ord_lim
 
-    if len(r_ord_lim) == 1:
+    if cat_ord_lim is None:
+        param_dict['Cat Order Estimate'] = 1
+        param_dict['Cat Order Minimum'] = 0
+        param_dict['Cat Order Maximum'] = 2
+    elif len(cat_ord_lim) == 1:
         param_dict['Cat Order Estimate'] = cat_ord_lim[0]
-        param_dict['Cat Order Minimum'] = cat_ord_lim[0] - 1E6
-        param_dict['Cat Order Maximum'] = cat_ord_lim[0] + 1E6
+        param_dict['Cat Order Minimum'] = None
+        param_dict['Cat Order Maximum'] = None
     else:
         param_dict['Cat Order Estimate'], param_dict['Cat Order Minimum'], param_dict['Cat Order Maximum'] = cat_ord_lim
 
-    if len(t_del_lim) == 1:
+    if t_del_lim is None:
+        param_dict['Start Time Estimate'] = 0
+        param_dict['Start Time Minimum'] = 0
+        param_dict['Start Time Maximum'] = "End Rxn Time"
+    elif len(t_del_lim) == 1:
         param_dict['Start Time Estimate'] = t_del_lim[0]
-        param_dict['Start Time Minimum'] = t_del_lim[0] - 1E6
-        param_dict['Start Time Maximum'] = t_del_lim[0] + 1E6
+        param_dict['Start Time Minimum'] = None
+        param_dict['Start Time Maximum'] = None
     else:
         param_dict['Start Time Estimate'], param_dict['Start Time Minimum'], param_dict['Start Time Maximum'] = t_del_lim
 
