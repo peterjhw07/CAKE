@@ -213,8 +213,8 @@ def read_data(file_name, sheet_name, t_col, col, add_col, sub_col):
 
 
 # prepare parameters
-def param_prep(spec_name, spec_type, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col,
-               sub_aliq, t_aliq, t_col, col, ord_lim, pois_lim, fit_asp, inc):
+def param_prep(spec_name, spec_type, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot,
+               t_one_shot, add_col, sub_aliq, t_aliq, t_col, col, ord_lim, pois_lim, fit_asp, inc):
     spec_type = type_to_list(spec_type)
     num_spec = len(spec_type)
     r_locs = [i for i in range(num_spec) if 'r' in spec_type[i]]
@@ -227,7 +227,7 @@ def param_prep(spec_name, spec_type, stoich, mol0, mol_end, add_sol_conc, add_co
                                      add_one_shot, t_one_shot, add_col, fit_asp], [num_spec] * 10)
     for i in range(num_spec):
         if spec_name[i] is None:
-            spec_name[i] = "[Species " + str(i + 1) + "]"
+            spec_name[i] = "Species " + str(i + 1)
     if ord_lim is None:
         ord_lim = []
         for i in spec_type:
@@ -254,14 +254,15 @@ def param_prep(spec_name, spec_type, stoich, mol0, mol_end, add_sol_conc, add_co
     var_ord_locs = [i for i in range(num_spec) if (isinstance(ord_lim[i], (tuple, list)) and len(ord_lim[i]) > 1)]
     fix_pois_locs = [i for i in range(num_spec) if (isinstance(pois_lim[i], (int, float))
                     or (isinstance(pois_lim[i], (tuple, list)) and len(pois_lim[i]) == 1))]
-    var_pois_locs = [i for i in range(num_spec) if (isinstance(pois_lim[i], (tuple, list, str)) and len(pois_lim[i]) > 1)]
+    var_pois_locs = [i for i in range(num_spec) if (isinstance(pois_lim[i], (tuple, list, str))
+                                                    and len(pois_lim[i]) > 1)]
     fit_asp_locs = [i for i in range(num_spec) if fit_asp[i] is not None and 'y' in fit_asp[i]]
     fit_param_locs = [0, range(1, 1 + len(var_ord_locs)),
                       range(1 + len(var_ord_locs), 1 + len(var_ord_locs) + len(var_pois_locs))]
     inc += 1
 
-    return spec_name, num_spec, r_locs, p_locs, c_locs, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, \
-           t_one_shot, add_col, sub_aliq, t_aliq, t_col, col, ord_lim, pois_lim, fit_asp,\
+    return spec_name, num_spec, r_locs, p_locs, c_locs, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, \
+           add_one_shot, t_one_shot, add_col, sub_aliq, t_aliq, t_col, col, ord_lim, pois_lim, fit_asp,\
            fix_ord_locs, var_ord_locs, fix_pois_locs, var_pois_locs, fit_asp_locs, fit_param_locs, inc
 
 
@@ -310,8 +311,8 @@ def get_add_pops_vol(data_org, x_data_org, x_data_new, num_spec, react_vol_init,
 
 
 # simulate CAKE experiments
-def sim_cake(t, spec_type, react_vol_init, spec_name=None, stoich=1, mol0=None, mol_end=None, add_sol_conc=None, add_cont_rate=None,
-             t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None, sub_cont_rate=None,
+def sim_cake(t, spec_type, react_vol_init, spec_name=None, stoich=1, mol0=None, mol_end=None, add_sol_conc=None,
+             add_cont_rate=None, t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None, sub_cont_rate=None,
              sub_aliq=None, t_aliq=None, sub_col=None, t_col=None, col=None, k_lim=None, ord_lim=None,
              pois_lim=None, fit_asp=None, win=1, inc=1):
     """
@@ -423,18 +424,17 @@ def sim_cake(t, spec_type, react_vol_init, spec_name=None, stoich=1, mol0=None, 
                                     inc, ord_lim, r_locs, p_locs, c_locs, fix_ord_locs, [], [], t, k_lim, [0, [], []])
 
     x_data_df = pd.DataFrame(t, columns=["Time / time_unit"])
-    y_fit_conc_headers = [i + " fit / moles_unit volume_unit$^{-1}$" for i in spec_name]
-    print(spec_name)
+    y_fit_conc_headers = [i + " fit conc. / moles_unit volume_unit$^{-1}$" for i in spec_name]
     y_fit_conc_df = pd.DataFrame(fit_pops_all, columns=y_fit_conc_headers)
     y_fit_rate_df = pd.DataFrame(np.reshape(fit_rate_all, (len(fit_rate_all), 1)),
-                              columns=["Rate / moles_unit volume_unit$^{-1}$ time_unit$^{-1}$"])
+                              columns=["Fit rate / moles_unit volume_unit$^{-1}$ time_unit$^{-1}$"])
 
     return x_data_df, y_fit_conc_df, y_fit_rate_df
 
 
 # fit CAKE expeirments
-def fit_cake(df, spec_type, react_vol_init, spec_name=None, stoich=1, mol0=None, mol_end=None, add_sol_conc=None, add_cont_rate=None,
-             t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None, sub_cont_rate=None,
+def fit_cake(df, spec_type, react_vol_init, spec_name=None, stoich=1, mol0=None, mol_end=None, add_sol_conc=None,
+             add_cont_rate=None, t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None, sub_cont_rate=None,
              sub_aliq=None, t_aliq=None, sub_col=None, t_col=0, col=1, k_lim=None, ord_lim=None,
              pois_lim=None, fit_asp="y", TIC_col=None, scale_avg_num=0, win=1, inc=1):
     """
@@ -494,7 +494,8 @@ def fit_cake(df, spec_type, react_vol_init, spec_name=None, stoich=1, mol0=None,
         (estimate, lower, upper). Default bounds set as (automated estimate, estimate * 1E-3, estimate * 1E3)
     ord_lim : float or list of tuple of float
         Species reaction order. Can be specified as exact value for fixed variable or
-        variable with bounds (estimate, lower, upper) for each species. Default bounds set as (1, 0, 2) for "r" and "c" species and 0 for "p" species
+        variable with bounds (estimate, lower, upper) for each species.
+        Default bounds set as (1, 0, 2) for "r" and "c" species and 0 for "p" species
     pois_lim : float, str or tuple of float or str, optional
         Moles of species poisoned in moles_unit. Can be specified as exact value for fixed variable,
         variable with bounds (estimate, lower, upper), or "max" with bounds (0, 0, max species concentration).
@@ -521,10 +522,10 @@ def fit_cake(df, spec_type, react_vol_init, spec_name=None, stoich=1, mol0=None,
             pops_reshape = np.append(pops_reshape, pops[:, i], axis=0)
         return pops_reshape
 
-    spec_name, num_spec, r_locs, p_locs, c_locs, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, \
-    t_one_shot, add_col, sub_aliq, t_aliq, t_col, col, ord_lim, pois_lim, fit_asp, fix_ord_locs, var_ord_locs, \
-    fix_pois_locs, var_pois_locs, fit_asp_locs, fit_param_locs, inc = param_prep(spec_name, spec_type, stoich,
-    mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, sub_aliq, t_aliq,
+    spec_name, num_spec, r_locs, p_locs, c_locs, stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, \
+    add_one_shot, t_one_shot, add_col, sub_aliq, t_aliq, t_col, col, ord_lim, pois_lim, fit_asp, fix_ord_locs, \
+    var_ord_locs, fix_pois_locs, var_pois_locs, fit_asp_locs, fit_param_locs, inc = param_prep(spec_name, spec_type,
+    stoich, mol0, mol_end, add_sol_conc, add_cont_rate, t_cont, add_one_shot, t_one_shot, add_col, sub_aliq, t_aliq,
     t_col, col, ord_lim, pois_lim, fit_asp, inc)
 
     # Get x_data
@@ -685,11 +686,12 @@ def fit_cake(df, spec_type, react_vol_init, spec_name=None, stoich=1, mol0=None,
 
     # Prepare data for output
     x_data = pd.DataFrame(x_data, columns=["Time / time_unit"])
-    y_exp_headers = [spec_name[i] + " exp / moles_unit volume_unit$^{-1}$" for i in range(num_spec) if col[i] is not None]
-    y_fit_conc_headers = [i + " fit / moles_unit volume_unit$^{-1}$" for i in spec_name]
+    y_exp_headers = [spec_name[i] + " exp. conc. / moles_unit volume_unit$^{-1}$"
+                     for i in range(num_spec) if col[i] is not None]
+    y_fit_conc_headers = [i + " fit conc. / moles_unit volume_unit$^{-1}$" for i in spec_name]
     y_exp = pd.DataFrame(data_mod[:, col_ext], columns=y_exp_headers)
     y_fit_conc = pd.DataFrame(fit_pops_all, columns=y_fit_conc_headers)
-    y_fit_rate = pd.DataFrame(fit_rate_all, columns=["Rate / moles_unit volume_unit$^{-1}$ time_unit$^{-1}$"])
+    y_fit_rate = pd.DataFrame(fit_rate_all, columns=["Fit rate / moles_unit volume_unit$^{-1}$ time_unit$^{-1}$"])
 
     if k_lim is not None and k_lim != 0 and isinstance(k_lim, (int, float) or len(k_lim) == 1):
         k_fit, k_fit_err = "N/A", "N/A"
@@ -846,13 +848,13 @@ def plot_process(return_fig, fig, f_format, save_disk, save_to, transparent):
 
 
 # plot CAKE sim results
-def plot_sim_results(x_data_df, fit_df, fit_asp=None, f_format='svg', return_image=False, save_disk=False,
+def plot_sim_results(x_data_df, y_fit_conc_df, fit_asp=None, f_format='svg', return_image=False, save_disk=False,
                      save_to='cake.svg', return_fig=False, transparent=False):
-    x_data, fit = map(pd.DataFrame.to_numpy, [x_data_df, fit_df])
-    headers = [i.replace(' / moles_unit volume_unit$^{-1}$', '') for i in list(fit_df.columns)]
+    x_data, y_fit_conc = map(pd.DataFrame.to_numpy, [x_data_df, y_fit_conc_df])
+    headers = [i.replace(' conc. / moles_unit volume_unit$^{-1}$', '') for i in list(y_fit_conc_df.columns)]
 
     if fit_asp is None:
-        fit_asp_locs = list(range(len(fit)))
+        fit_asp_locs = list(range(len(y_fit_conc)))
     else:
         fit_asp_locs = [i for i in range(len(fit_asp)) if fit_asp[i] is not None and "y" in fit_asp[i]]
 
@@ -867,12 +869,12 @@ def plot_sim_results(x_data_df, fit_df, fit_asp=None, f_format='svg', return_ima
     plt.xlabel(x_label_text)
     plt.ylabel(y_label_text)
     for i in fit_asp_locs:
-        plt.plot(x_data, fit[:, i] * y_ax_scale, label=headers[i])
-    fit = fit[:, fit_asp_locs]
+        plt.plot(x_data, y_fit_conc[:, i] * y_ax_scale, label=headers[i])
+    y_fit_conc = y_fit_conc[:, fit_asp_locs]
     plt.xlim([float(min(x_data * x_ax_scale) - (edge_adj * max(x_data * x_ax_scale))),
               float(max(x_data * x_ax_scale) * (1 + edge_adj))])
-    plt.ylim(
-        [float(np.min(fit) - edge_adj * np.max(fit) * x_ax_scale), float(np.max(fit)) * x_ax_scale * (1 + edge_adj)])
+    plt.ylim([float(np.min(y_fit_conc) - edge_adj * np.max(y_fit_conc) * y_ax_scale),
+              float(np.max(y_fit_conc)) * y_ax_scale * (1 + edge_adj)])
     plt.legend(prop={'size': 10}, frameon=False)
 
     # plt.show()
@@ -885,14 +887,14 @@ def plot_sim_results(x_data_df, fit_df, fit_asp=None, f_format='svg', return_ima
 
 
 # plot CAKE fit results
-def plot_fit_results(x_data_df, y_data_df, fit_df, col, f_format='svg', return_image=False, save_disk=False,
+def plot_fit_results(x_data_df, y_exp_conc_df, y_fit_conc_df, col, f_format='svg', return_image=False, save_disk=False,
                       save_to='cake.svg', return_fig=False, transparent=False):
-    x_data, y_data, fit = map(pd.DataFrame.to_numpy, [x_data_df, y_data_df, fit_df])
+    x_data, y_exp_conc, y_fit_conc = map(pd.DataFrame.to_numpy, [x_data_df, y_exp_conc_df, y_fit_conc_df])
 
-    data_fit_col = [i for i in range(len(col)) if col[i] is not None]
-    non_data_fit_col = [i for i in range(len(col)) if col[i] is None]
-    data_headers = [i.replace(' / moles_unit volume_unit$^{-1}$', '') for i in list(y_data_df.columns)]
-    fit_headers = [i.replace(' / moles_unit volume_unit$^{-1}$', '') for i in list(fit_df.columns)]
+    y_fit_col = [i for i in range(len(col)) if col[i] is not None]
+    non_y_fit_col = [i for i in range(len(col)) if col[i] is None]
+    y_exp_conc_headers = [i.replace(' conc. / moles_unit volume_unit$^{-1}$', '') for i in list(y_exp_conc_df.columns)]
+    y_fit_conc_headers = [i.replace(' conc. / moles_unit volume_unit$^{-1}$', '') for i in list(y_fit_conc_df.columns)]
 
     # graph results
     x_ax_scale = 1
@@ -902,20 +904,23 @@ def plot_fit_results(x_data_df, y_data_df, fit_df, col, f_format='svg', return_i
     y_label_text = "Concentration / moles_unit volume_unit$^{-1}$"
     std_colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
     cur_clr = 0
-    if len(data_headers) == len(fit_headers):
+    if len(y_exp_conc_headers) == len(y_fit_conc_headers):
         fig = plt.figure(figsize=(5, 5))
         #plt.rcParams.update({'font.size': 15})
         plt.xlabel(x_label_text)
         plt.ylabel(y_label_text)
-        for i in range(len(data_headers)):
+        for i in range(len(y_exp_conc_headers)):
             if len(x_data) <= 50:
-                plt.scatter(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, label=data_headers[i])
+                plt.scatter(x_data * x_ax_scale, y_exp_conc[:, i] * y_ax_scale, label=y_exp_conc_headers[i])
             else:
-                plt.plot(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, label=data_headers[i])
-        for i in range(len(fit_headers)):
-            plt.plot(x_data, fit[:, i] * y_ax_scale, label=fit_headers[i])
-        plt.xlim([float(min(x_data * x_ax_scale) - (edge_adj * max(x_data * x_ax_scale))), float(max(x_data * x_ax_scale) * (1 + edge_adj))])
-        plt.ylim([float(min(np.min(y_data), np.min(fit)) - edge_adj * max(np.max(y_data), np.max(fit)) * x_ax_scale), float(max(np.max(y_data), np.max(fit)) * x_ax_scale * (1 + edge_adj))])
+                plt.plot(x_data * x_ax_scale, y_exp_conc[:, i] * y_ax_scale, label=y_exp_conc_headers[i])
+        for i in range(len(y_fit_conc_headers)):
+            plt.plot(x_data, y_fit_conc[:, i] * y_ax_scale, label=y_fit_conc_headers[i])
+        plt.xlim([float(min(x_data * x_ax_scale) - (edge_adj * max(x_data * x_ax_scale))),
+                    float(max(x_data * x_ax_scale) * (1 + edge_adj))])
+        plt.ylim([float(min(np.min(y_exp_conc), np.min(y_fit_conc)) - edge_adj * max(np.max(y_exp_conc),
+                    np.max(y_fit_conc)) * x_ax_scale), float(max(np.max(y_exp_conc),
+                    np.max(y_fit_conc)) * x_ax_scale * (1 + edge_adj))])
         plt.legend(prop={'size': 10}, frameon=False)
     else:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
@@ -924,27 +929,41 @@ def plot_fit_results(x_data_df, y_data_df, fit_df, col, f_format='svg', return_i
         ax1.set_ylabel(y_label_text)
         ax2.set_xlabel(x_label_text)
         ax2.set_ylabel(y_label_text)
-        for i in range(len(data_headers)):
+        for i in range(len(y_exp_conc_headers)):
             if len(x_data) <= 50:
-                line, = ax1.scatter(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, color=std_colours[cur_clr], label=data_headers[i])
-                ax2.scatter(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, color=std_colours[cur_clr], label=data_headers[i])
+                line, = ax1.scatter(x_data * x_ax_scale, y_exp_conc[:, i] * y_ax_scale, color=std_colours[cur_clr],
+                            label=y_exp_conc_headers[i])
+                ax2.scatter(x_data * x_ax_scale, y_exp_conc[:, i] * y_ax_scale, color=std_colours[cur_clr],
+                            label=y_exp_conc_headers[i])
                 cur_clr += 1
             else:
-                line, = ax1.plot(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, color=std_colours[cur_clr], label=data_headers[i])
-                ax2.plot(x_data * x_ax_scale, y_data[:, i] * y_ax_scale, color=std_colours[cur_clr], label=data_headers[i])
+                line, = ax1.plot(x_data * x_ax_scale, y_exp_conc[:, i] * y_ax_scale, color=std_colours[cur_clr],
+                            label=y_exp_conc_headers[i])
+                ax2.plot(x_data * x_ax_scale, y_exp_conc[:, i] * y_ax_scale, color=std_colours[cur_clr],
+                            label=y_exp_conc_headers[i])
                 cur_clr += 1
-        for i in data_fit_col:
-            line, = ax1.plot(x_data * x_ax_scale, fit[:, i] * y_ax_scale, color=std_colours[cur_clr], label=fit_headers[i])
-            ax2.plot(x_data * x_ax_scale, fit[:, i] * y_ax_scale, color=std_colours[cur_clr], label=fit_headers[i])
+        for i in y_fit_col:
+            line, = ax1.plot(x_data * x_ax_scale, y_fit_conc[:, i] * y_ax_scale, color=std_colours[cur_clr],
+                            label=y_fit_conc_headers[i])
+            ax2.plot(x_data * x_ax_scale, y_fit_conc[:, i] * y_ax_scale, color=std_colours[cur_clr],
+                            label=y_fit_conc_headers[i])
             cur_clr += 1
-        for i in non_data_fit_col:
-            ax2.plot(x_data * x_ax_scale, fit[:, i] * y_ax_scale, color=std_colours[cur_clr], label=fit_headers[i])
+        for i in non_y_fit_col:
+            ax2.plot(x_data * x_ax_scale, y_fit_conc[:, i] * y_ax_scale, color=std_colours[cur_clr],
+                            label=y_fit_conc_headers[i])
             cur_clr += 1
 
-        ax1.set_xlim([float(min(x_data) - edge_adj * max(x_data) * x_ax_scale), float(max(x_data) * x_ax_scale * (1 + edge_adj))])
-        ax1.set_ylim([float(min(np.min(y_data), np.min(fit[:, data_fit_col])) - edge_adj * max(np.max(y_data), np.max(fit[:, data_fit_col])) * x_ax_scale), float(max(np.max(y_data), np.max(fit[:, data_fit_col])) * x_ax_scale * (1 + edge_adj))])
-        ax2.set_xlim([float(min(x_data) - edge_adj * max(x_data) * x_ax_scale), float(max(x_data) * x_ax_scale * (1 + edge_adj))])
-        ax2.set_ylim([float(min(np.min(y_data), np.min(fit)) - edge_adj * max(np.max(y_data), np.max(fit)) * x_ax_scale), float(max(np.max(y_data), np.max(fit)) * x_ax_scale * (1 + edge_adj))])
+        ax1.set_xlim([float(min(x_data) - edge_adj * max(x_data) * x_ax_scale),
+                        float(max(x_data) * x_ax_scale * (1 + edge_adj))])
+        ax1.set_ylim([float(min(np.min(y_exp_conc),
+                        np.min(y_fit_conc[:, y_fit_col])) - edge_adj * max(np.max(y_exp_conc),
+                        np.max(y_fit_conc[:, y_fit_col])) * x_ax_scale), float(max(np.max(y_exp_conc),
+                        np.max(y_fit_conc[:, y_fit_col])) * x_ax_scale * (1 + edge_adj))])
+        ax2.set_xlim([float(min(x_data) - edge_adj * max(x_data) * x_ax_scale),
+                        float(max(x_data) * x_ax_scale * (1 + edge_adj))])
+        ax2.set_ylim([float(min(np.min(y_exp_conc), np.min(y_fit_conc)) - edge_adj * max(np.max(y_exp_conc),
+                        np.max(y_fit_conc)) * x_ax_scale), float(max(np.max(y_exp_conc),
+                        np.max(y_fit_conc)) * x_ax_scale * (1 + edge_adj))])
         ax1.legend(prop={'size': 10}, frameon=False)
         ax2.legend(prop={'size': 10}, frameon=False)
 
