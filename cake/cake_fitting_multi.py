@@ -980,13 +980,13 @@ def plot_fit_results(x_data_df, y_exp_conc_df, y_fit_conc_df, col, f_format='svg
 def pprint_cake(k_fit, k_fit_err, ord_fit, ord_fit_err, pois_fit, pois_fit_err, ss_res, r_squared):
     result = f"""|               | Rate Constant (k) | Reaction Orders |
 |---------------|-------------------|----------------|
-|  Opt. Values  | {k_fit: 17.6E} | {ord_fit[1]: 14.6f} |
-| Est. Error +- | {k_fit_err: 17.6E} | {ord_fit_err: 14.6f} |
+|  Opt. Values  | {k_fit} | {ord_fit} |
+| Est. Error +- | {k_fit_err} | {ord_fit_err} |
 
 |               | Species Poisoning
 |---------------|----------------|
-|  Opt. Values  | {pois_fit: 14.6f} |
-| Est. Error +- | {pois_fit_err: 14.6f} |
+|  Opt. Values  | {pois_fit} |
+| Est. Error +- | {pois_fit_err} |
 
 Residual Sum of Squares for Optimization: {ss_res: 8.6f}.
 
