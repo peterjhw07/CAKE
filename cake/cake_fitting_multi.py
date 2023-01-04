@@ -709,7 +709,10 @@ def fit_cake(df, spec_type, react_vol_init, spec_name=None, stoich=1, mol0=None,
 
 
 def write_sim_data(filename, df, param_dict, x_data_df, y_fit_conc_df, y_fit_rate_df):
-    param_dict = {key: np.array([value]) for (key, value) in param_dict.items()}
+    if df is None:
+        df = pd.DataFrame()
+    # param_dict = {key: np.array([value]) for (key, value) in param_dict.items()}
+    param_dict = {key: [str(value)] for (key, value) in param_dict.items()}
     df_params = pd.DataFrame.from_dict(param_dict)
     df[list(x_data_df.columns)] = x_data_df
     df[list(y_fit_conc_df.columns)] = y_fit_conc_df
@@ -723,14 +726,15 @@ def write_sim_data(filename, df, param_dict, x_data_df, y_fit_conc_df, y_fit_rat
 
 def write_sim_data_temp(df, param_dict, x_data_df, y_fit_conc_df, y_fit_rate_df):
     tmp_file = io.BytesIO()
-    write_fit_data(tmp_file, df, param_dict, x_data_df, y_fit_conc_df, y_fit_rate_df)
+    write_sim_data(tmp_file, df, param_dict, x_data_df, y_fit_conc_df, y_fit_rate_df)
 
     return tmp_file, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 
 def write_fit_data(filename, df, param_dict, x_data_df, y_exp_df, y_fit_conc_df, y_fit_rate_df,
                    k_fit, k_fit_err, ord_fit, ord_fit_err, pois_fit, pois_fit_err, ss_res, r_squared):
-    param_dict = {key: np.array([value]) for (key, value) in param_dict.items()}
+    # param_dict = {key: np.array([value]) for (key, value) in param_dict.items()}
+    param_dict = {key: [str(value)] for (key, value) in param_dict.items()}
     out_dict = {"Rate Constant": [k_fit],
                   "Reaction Orders": [ord_fit],
                   "Species Poisoning": [pois_fit],
@@ -763,10 +767,11 @@ def write_fit_data_temp(df, param_dict, x_data_df, y_exp_df, y_fit_conc_df, y_fi
 
 
 def make_param_dict(spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None, add_sol_conc=None, add_cont_rate=None,
-                    t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None,
+                    t_cont=None, add_one_shot=None, t_one_shot=None, add_col=None, spec_name=None,
                     sub_cont_rate=None, sub_aliq=None, t_aliq=None, sub_col=None, t_col=0, col=1, k_lim=None,
                     ord_lim=None, pois_lim=None, fit_asp="y", TIC_col=None, scale_avg_num=0, win=1, inc=1):
     param_dict = {'Species types': spec_type,
+                  'Species names': spec_name,
                   'Initial reaction solution volume': react_vol_init,
                   'Stoichiometries': stoich,
                   'Initial moles': mol0,
@@ -796,22 +801,30 @@ def make_param_dict(spec_type, react_vol_init, stoich=1, mol0=None, mol_end=None
     else:
         param_dict['Rate constant starting estimate'], param_dict['Rate constant minimum'], \
         param_dict['Rate constant maximum'] = k_lim
-
-    if len(ord_lim) == 1:
-        param_dict['Reaction order starting estimates'] = ord_lim[0]
-        param_dict['Reaction order minima'] = ord_lim[0] - 1E6
-        param_dict['Reaction order maxima'] = ord_lim[0] + 1E6
-    else:
-        param_dict['Reaction order starting estimates'], param_dict['Reaction order minima'], \
-        param_dict['Reaction order maxima'] = ord_lim
-
-    if len(pois_lim) == 1:
-        param_dict['Poisoning starting estimates'] = pois_lim[0]
-        param_dict['Poisoning starting minima'] = pois_lim[0] - 1E6
-        param_dict['Poisoning starting maxima'] = pois_lim[0] + 1E6
-    else:
-        param_dict['Poisoning starting estimates'], param_dict['Poisoning starting minima'], \
-        param_dict['Poisoning starting maxima'] = pois_lim
+    for spec_ord_lim in ord_lim:
+        if spec_ord_lim is None:
+            param_dict['Reaction order starting estimates'] = None
+            param_dict['Reaction order minima'] = None
+            param_dict['Reaction order maxima'] = None
+        elif isinstance(spec_ord_lim, float):
+            param_dict['Reaction order starting estimates'] = spec_ord_lim
+            param_dict['Reaction order minima'] = spec_ord_lim - 1E6
+            param_dict['Reaction order maxima'] = spec_ord_lim + 1E6
+        else:
+            param_dict['Reaction order starting estimates'], param_dict['Reaction order minima'], \
+            param_dict['Reaction order maxima'] = spec_ord_lim
+    for spec_pois_lim in pois_lim:
+        if spec_pois_lim is None:
+            param_dict['Poisoning starting estimates'] = None
+            param_dict['Poisoning starting minima'] = None
+            param_dict['Poisoning starting maxima'] = None
+        elif isinstance(spec_pois_lim, float):
+            param_dict['Poisoning starting estimates'] = spec_pois_lim
+            param_dict['Poisoning starting minima'] = spec_pois_lim - 1E6
+            param_dict['Poisoning starting maxima'] = spec_pois_lim + 1E6
+        else:
+            param_dict['Poisoning starting estimates'], param_dict['Poisoning starting minima'], \
+            param_dict['Poisoning starting maxima'] = spec_pois_lim
 
     return param_dict
 
@@ -876,7 +889,7 @@ def plot_sim_results(x_data_df, y_fit_conc_df, fit_asp=None, f_format='svg', ret
     plt.ylim([float(np.min(y_fit_conc) - edge_adj * np.max(y_fit_conc) * y_ax_scale),
               float(np.max(y_fit_conc)) * y_ax_scale * (1 + edge_adj)])
     plt.legend(prop={'size': 10}, frameon=False)
-
+    plt.tight_layout()
     # plt.show()
     img, mimetype = plot_process(return_fig, fig, f_format, save_disk, save_to, transparent)
     if not return_image:
@@ -966,7 +979,7 @@ def plot_fit_results(x_data_df, y_exp_conc_df, y_fit_conc_df, col, f_format='svg
                         np.max(y_fit_conc)) * x_ax_scale * (1 + edge_adj))])
         ax1.legend(prop={'size': 10}, frameon=False)
         ax2.legend(prop={'size': 10}, frameon=False)
-
+    plt.tight_layout()
     # plt.show()
     img, mimetype = plot_process(return_fig, fig, f_format, save_disk, save_to, transparent)
     if not return_image:
