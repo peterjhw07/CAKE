@@ -121,7 +121,7 @@ if __name__ == "__main__":
                                                       f_format='png', save_disk=True, save_to=pic_save)
 
             if "y" in export_fit:
-                all_data = np.concatenate((x_data, y_data, fit, fit_rate), axis=1)
+                all_data = np.concatenate((x_exp_df, y_exp_df, y_fit_conc_df, y_fit_rate_df), axis=1)
                 exportdf = pd.DataFrame(all_data, columns=exp_headers)
                 with pd.ExcelWriter(r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Programmes\Test_Spectra_Results_Fit.xlsx',
                                 mode='a', if_sheet_exists='replace') as writer:
