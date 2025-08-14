@@ -8,6 +8,7 @@ from PIL import Image
 import os
 import pandas as pd
 import math
+import pyautogui
 
 directory = r'C:\Users\Peter\Documents\Postdoctorate\Work\CAKE\Case studies\UV-Vis Enzyme Catalysis\UV-Vis\21040701_Run' # enter file directory
 show_first_spec = "Y"  # enter "Y" or "Yes" if you want to see first image, to aid region limit selection
