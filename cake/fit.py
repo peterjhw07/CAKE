@@ -25,7 +25,7 @@ def fit(df, spec_name=None, spec_type=None, stoich=None, rxns=None, t_col=0, col
         mol0=None, mol_end=None, vol0=None, add_sol_conc=None, cont_add_rate=None, t_cont_add=None,
         disc_add_vol=None, t_disc_add=None, cont_sub_rate=None, disc_sub_vol=None, t_disc_sub=None,
         temp0=293.15, cont_temp_rate=None, t_cont_temp=None, temp_col=None,
-        rate_eq_type='standard', rate_method='Radau', rtol=1E-12, atol=1E-15, k_lim=None, ord_lim=None, pois_lim=None,
+        rate_eq_type='standard', rate_method='Radau', rtol=1E-6, atol=1E-9, k_lim=None, ord_lim=None, pois_lim=None,
         scale_avg_num=0, win=1, inc=1, tic_col=None,
         time_unit='time_unit', conc_unit='moles_unit volume_unit$^{-1}$'):
     """
@@ -140,11 +140,11 @@ def fit(df, spec_name=None, spec_type=None, stoich=None, rxns=None, t_col=0, col
     rtol : float, optional
         Relative tolerance (number of correct digits) used for fitting.
         For more information see scipy.integrate.solve_ivp documentation.
-        Default is '1E-12'.
+        Default is '1E-6'.
     atol : float, optional
         Absolute tolerance (number of correct decimal places) used for fitting.
         For more information see scipy.integrate.solve_ivp documentation.
-        Default is '1E-15'.
+        Default is '1E-9'.
     k_lim : float, or list of float and tuple of float, or list of list of float and tuple of float, or None, optional
         Estimated constant(s) (in rxns ord) in appropriate units. Constants related to the molar gas constant
         must be in units of J K^-1 mol^-1.
