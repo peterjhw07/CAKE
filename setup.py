@@ -3,7 +3,7 @@ CAKE
 Constant Addition Kinetic Elucidation.
 
 A method for analyzing the kinetics of reactions performed under the constant
-addition of a reactant.
+addition of a species.
 """
 import sys
 from setuptools import setup, find_packages
@@ -30,7 +30,7 @@ setup(
     description=short_description[0],
     long_description=long_description,
     long_description_content_type="text/markdown",
-    version=versioneer.get_version(),
+    version='0.2.0',
     cmdclass=versioneer.get_cmdclass(),
     license='',
 

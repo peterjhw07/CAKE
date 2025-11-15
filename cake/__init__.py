@@ -1,19 +1,12 @@
 """
 CAKE
-Constant Addition Kinetic Elucidation is a method for analyzing the kinetics of reactions performed under the constant
-addition of a reactant.
+Continuous Addition Kinetic Elucidation is a method for analyzing the kinetics of reactions
+performed using continuous addition of a species.
 """
 
-# Add imports here
-from cake.cake_fitting import *
-
-# Handle versioneer
-from ._version import get_versions
-versions = get_versions()
-__version__ = versions['version']
-__git_revision__ = versions['full-revisionid']
-del get_versions, versions
-
-from ._version import get_versions
-__version__ = get_versions()['version']
-del get_versions
+from cake.prep.import_data import import_data
+from cake.sim import sim
+from cake.fit import fit
+from cake.fit_discrete_order import fit_discrete_order
+from cake.plot import plot_conc_vs_time, plot_rate_vs_conc, plot_rate_vs_temp
+from cake.plot import plot_discrete_order_2d, plot_discrete_order_3d
