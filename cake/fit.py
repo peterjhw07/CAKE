@@ -7,7 +7,6 @@ import pandas as pd
 import itertools
 from scipy import optimize
 import logging
-from cake import fit_simulator_app
 from cake import rate_eqs
 from cake.fitting import ode_solver
 from cake.fitting.residuals import residuals
@@ -454,8 +453,6 @@ def fitting_func(data):
     init_param = [*k_val, *ord_val, *pois_val]
     low_bounds = [*k_min, *ord_min, *pois_min]
     up_bounds = [*k_max, *ord_max, *pois_max]
-
-    # fit_simulator_app.app_run(data)
 
     # Path if no parameters were set to fit that avoids applying fitting
     if init_param and low_bounds and up_bounds:
